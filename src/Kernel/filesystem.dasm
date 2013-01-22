@@ -479,144 +479,329 @@ set B, pop
 set A, pop
 set pc, pop
 
-
+ 
 ;by Lukew4lker
-:fd_find_file_dte ; (not tested) 
+:fd_find_file_dte ; (not tested)
 ; input
 ; a- starting address of file name string (11 chars)
-; b - Cluster dir sector number if null use current processes wd
+; b - Cluster dir sector number if 0xffff use current processes wd
 ; output
-; a - offset of file dte in sector b(output is a cluster number)
-set push, i 
+; a - offset of file dte in cluster b
 set push, j
+set push, i
 set push, y
-set push, c
 set push, x
+set push, c
 set push, a
 set a, 0x200
 jsr mm_request_memory
 ife a, 0xffff
    set pc, .error0001
-set c, a; a isn't being used anymore
-ife b, 0x0
-set pc, .usewd
+set c, a
+ife b, 0xffff
+        set pc, .usewd
 set a, b
 add a, [fd_root_offset]; translates useable sector numbers into actual drive sector numbers
+ 
 :.endusewd ;by this point, A should point to the sector to be loaded
+ 
 jsr fd_load_sector
-ife a, 0xffff ;incase fd_load_sector ever gives errors
-    set pc, .error0001
 set b, a; sector number is now stored in b
 set a, pop ; a points to filename location
-set x, 0x0
 set i, a
 set j, c
 set y, 0x1
-set push, a
-add a, 6
-
+set x, 0x1
+ 
 :.loop
-ife i, a  
+ife x, 0x6
 set pc, .foundfile
 ifn [i],[j]
 set pc, .looknextdte
-ife i, a
+ife x, 0x6
    ife y, 0x20
       set pc, .load_next_sector_of_dir
+add x, 1
 sti pc, .loop
-
-:.looknextdte
-set i, peek
-add j, 0x11
-And [j + 6], 0xff00
-add y, 1
-set pc, .loop
-
+ 
 :.usewd
 set a, 0xffff
 jsr fd_get_wd
 add a, [fd_root_offset]; translates cluster numbers into actual drive sector numbers
 set pc, .endusewd
-
+ 
+:.looknextdte
+set i, a ;put i back to the start
+set j, c 
+set x, y; x is going to be reset anyway
+mul x, 0x10  
+add j, x
+And [j + 6], 0xff00
+add y, 0x1
+set x, 0x1
+set pc, .loop
+ 
 :.load_next_sector_of_dir
+;Mainly just operates/changes B  
+set j, c  
 set push, a
-sub j, 0x200;put memory pointer back to start
-sub b, [fd_root_offset]; translate back to cluster number
+sub b, [fd_root_offset]
 set a, b
-jsr  fd_get_FAT_entry
+jsr fd_get_FAT_entry
 ife a, 0xffff
     set pc, .eod
-add b, [fd_root_offset];translate to drive sector numbers
+add b, [fd_root_offset]
 set b, a
 jsr fd_load_sector
-ife a, 0xffff ;incase fd_load_sector ever gives errors
-    set pc, .error0002
 set a, pop
-set x, 0x0
 set pc, .loop
-
+ 
 :.error0001
-set a, pop
-set x, pop
+set x, a
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+sub pc, 1
+set a, x
 set c, pop
+set x, pop
 set y, pop
-set j, pop
 set i, pop
+set j, pop
 set ex, 0x0fff
-
-:.error0002
-set a, pop ;destroys backup working directory, the original is in a :/
-set a, 0xffff
-set x, pop
-set c, pop
-set y, pop
-set j, pop
-set i, pop
 set pc, pop
  
-
+ 
 :.eod;(file not found in directory)
-set ex, pop ; destroys backup working directory, the original is in a :/
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+sub pc, 1
 set ex, 0x404
 set a, 0xffff
-set x, pop
 set c, pop
+set x, pop
 set y, pop
-set j, pop
 set i, pop
+set j, pop
 set pc, pop
-
+ 
 :.foundfile
-set a, pop
-set a, c 
-set x, pop
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+sub pc, 1
+set a, y
+sub a, 1
+sub b, [fd_root_offset]
 set c, pop
+set x, pop
 set y, pop
-set j, pop
 set i, pop
+set j, pop
 set pc, pop
-
-:fd_get_wd 
-; input a - prog id if 0xffff then use current program
+ 
+:fd_get_wd
+; input a - prog id if 0xffff then use current pwd
 ; output a - the wd cluster number
 set push, b
 set b, fd_working_dirs
-Ife a, 0xffff
-   add b, [current_process]
-add b, a 
+Ifn a, 0xffff
+   set pc, .operation
+add b, [current_process]
+set pc, .noop
+:.operation
+add b, a
+:.noop
 set a, [b]
 set b, pop
 set pc, pop
-
-:fd_find_sector ; Find sector B in file A.	;Find and load, I assume?
+ 
+:fd_cd
+;  a - string of the dir you want to change to(obviously prepended with length)
+; [a + 1] is if you want to cd from the pwd first
+; uses ex to say that it didn't find the file(returns 404)
+set push, z
+set push, y
+set push, x
+set push, c
+set push, b
+set push, a
+set z, [a]; z should remain the string length
+set x, a; x contains the string
+ife [x + 1], 0x0001
+set pc, .chkwd1st
+ 
+;Checking root first
+set b, 0x0
+ 
+:.chkdir
+add x, 2
+set a, x
+jsr fd_find_file_dte
+ife a, 0xffff
+        set pc, .hndlerr001
+jsr .usemm ; after this c is then the memory location.
+set pc, .skipper
+ 
+:.chkdirloop
+jsr fd_find_file_dte
+ife a, 0xffff
+        set pc, .hndlerr002
+:.skipper
+set y, a                                ;y is now the number of the dte in cluster b.
+set a, b                                ;a is now the is now the cluster we are looking at
+ 
+:.dirclusterfinder              ;Find the cluster of the dir we want to change to that we lm
+add a, [fd_root_offset]
+jsr fd_load_sector
+mul y, 0x10; mulpies to get to location of DTE
+add c, y                                ;C is now looking at the correct dte.
+add c, 0xe                              ;Location of cluster pointer in dte.
+set y, 0x0 ;just because
+set b, [c]; B is the Cluster number of the directory we are jumping too
+add x, 8
+set a, x; reset A back to the string location
+sub z, 6
+ife z, 0x0
+set pc, .end
+set pc, .chkdirloop
+ 
+:.chkwd1st
+;changes b to the cluster number of the current pwd.
+set a, 0xffff
+jsr fd_get_wd
+set b, a
+set b, 0xffff
+set pc, .chkdir
+ 
+:.usemm; use memory manager
+set push, a
+set a, 0x200
+jsr mm_request_memory
+ife a, 0xffff
+        sub pc, 1
+set c, a; c is the allocated memory
+set a, pop
+set pc, pop
+ 
+:.end
+set a, b
+jsr fd_set_pwd
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+sub pc, 1
+set a, pop
+set b, pop
+set c, pop
+set x, pop
+set y, pop
+set z, pop
+set pc, pop
+ 
+:.hndlerr002
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+sub pc, 1
+ 
+:.hndlerr001
+set a, pop
+set a, 0xffff
+set b, pop
+set c, pop
+set x, pop
+set y, pop
+set z, pop
+set ex, 0x0404
+set pc, pop
+ 
+:fd_set_pwd
+;set pwd to "a"
+set push, b
+set b, fd_working_dirs
+add b, [current_process]
+set [b], a
+set b, pop
+set pc, pop
+ 
+;NOT TESTED DO NOT USE
+:fd_convert_string
+;input - a string to be converted
+set push, y
+set push, x
+set push, c
+set push, b
+:.beforeloop0000setup
+set y, [a]; set z to the length of the input string
+add a, 2
+set c, 0x0
+set b, pop ; from the memory you allocated earlier...
+:.loop0000
+ife c, 4
+set pc, .noop
+ife [a], 0x002f
+set pc, .exitloop0000
+add a, 1
+add c, 1
+set pc, .loop0000
+:.exitloop0000
+;a now points to the / char
+sub a, c ; a is now poiting to the start of the string
+sub c, 1 ; c is now the number of words that the first filename is long
+jsr fd_assign
+; setup for adding the null word
+set x, 4
+sub x, c ; x is the number of null words needed to correctly convert the string
+sub y, c ; subtrac from the total length of this string so that when we get to 0 we can
+; just exit and say the string is completely converted
+sub c, 1
+add b, c; b now points to the char after the end of the filename input string
+:.loop0001
+ife x, 0
+set pc, .exitloop0001
+add b, 1
+set [b], 0x0
+sub x, 1
+set pc, .loop0001
+:.noop
+sub a, c
+; a is now poiting to the start of the string
+; c is now the number of words that the first filename is long
+jsr fd_assign
+:.exitloop0001
+;the string now has it's null pad and we add the dir extention to the end so that this
+;string can be used with fd_cd and by association fd_find_file_dte
+add b, 1
+set [b], 0x6469
+add b, 1
+set [b], 0x0072
+; setup the registers for the next
+add b, 1
+add c, 2
+add a, c
+set c, 0x0
+ife y, 0
+set pc, .finished
+set pc, .loop0000
+ 
+:.finished
+set push, b
+set push, c
+set push, x
+set push, y
+set pc, pop
+ 
+ 
+ 
+:fd_find_sector ; Find sector B in file A.      ;Find and load, I assume?
 :fd_apply ; Apply changes to file A. Do this before loading another sector in the file.
 :fd_discard ; Discard changes to file A. Will reload the current sector from disk.
 :fd_create ; Create file, dir or link A with flags B.
 :fd_delete ; Delete file, dir or link A.
 :fd_move ; Move file, dir or link A.
-:fd_change_dir ; Change the working directory to A, one level at a time.
-:fd_list ; List the files in the working directory.
 :fd_get_flags ; Get the flags for file A.
 :fd_set_flags ; Set the flags for file A to B. Some flag changes will be reverted before applying.
-:fd_get_props ; Get the properties (size, number of children, flags, create, edit and view times).	;How should I get the number of children??
+:fd_get_props ; Get the properties (size, number of children, flags, create, edit and view times).      ;How should I get the number of children??
 :fd_format ; Format disk A with the filesystem.
