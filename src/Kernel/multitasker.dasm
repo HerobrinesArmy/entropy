@@ -8,6 +8,7 @@
 ;@name pm_add_proc
 ;adds a program to the program tables
 ;@params A the filepath of the program
+;@params Z the currentPriority
 ;@returns A the program ID (needed to kill it), -1 if there wasn't room
 ;@see thePalindrome	
 :pm_add_proc
@@ -16,12 +17,13 @@
     JSR fd_load_prog
     SET PUSH, B
 	SET PUSH, C
+	SET PUSH, Z
 	SET C, 0
 	SET B, multitasker_Progs_0
-	SUB B, 0xC
+	SUB B, 0xD
 	
 	ADD C, 1
-	ADD B, 0xC
+	ADD B, 0xD
 	IFN [B], 0
 	    IFL 0xF, C
 	        SUB PC, 5 ; B now points to an empty program slot
@@ -36,8 +38,27 @@
 	SET [B], A
 	
 	SET A, B
+	SUB A, multitasker_Progs_0
+	DIV A, 0xD ; Now it'll return what it's Current_process value is instead of where it is in memory :/
+	ADD B, 1
+	SET C, [Current_process]
+	MUL C, 0xD
+	ADD C, multitasker_Progs_0
+	ADD C, 1
+	IFG [C], Z
+	    JSR pm_priorityCheck
+	SET [B], Z 
+	SET Z, POP
 	SET C, POP
 	SET B, POP
+	SET PC, POP
+	
+;@name pm_priorityCheck
+;Asks the user if a priority set is alright, EXPAND TO MATCH THE OS!
+;@params Z the priority that's trying to be activated
+;@returns Z the allowed priority
+;@stub
+:pm_priorityCheck
 	SET PC, POP
 	
 :pm_kill_me
@@ -49,8 +70,10 @@
 ;@params A the program ID
 ;@see thePalindrome
 :pm_kill ; TODO add special case if trying to kill current program
-    MUL A, 0xB
+    MUL A, 0xD
     ADD A, multitasker_Progs_0
+	SET [A], 0
+	ADD A, 1
 	SET [A], 0
 	ADD A, 1
 	SET [A], 0
@@ -86,7 +109,7 @@
 	SET A, multitasker_Progs_0
 	SET PUSH, B
 	SET B, [Current_process]
-	MUL B, 0xC
+	MUL B, 0xD
 	ADD A, B
 	SET B, POP ;at this point, A points to multitasker_Progs_(number of cur prog)
 	ADD A, 1
@@ -129,10 +152,10 @@
 	IFE [A], 0 ;If there's no program loaded (+1 code of hangs-if-no-programs-available)
 	    SUB PC, 7
 		
-	ADD A, 10 ; THIS IS THE PART WHERE WE LOAD A NEW PROGRAM
+	ADD A, 0xB ; THIS IS THE PART WHERE WE LOAD A NEW PROGRAM
 	SET SP, [A] ;The stack will now return to the new program
 	SUB A, 9
-	SET [A], 14 ; each program gets 14 ticks
+	SET [A], [A-1] ; each program gets 14 ticks
 	ADD A, 8 ; A now points to the J register of the new program
 	SET J, [A]
 	SUB A, 1
@@ -161,68 +184,32 @@
 		
 	:multitasker_Interrupt_End
     SET PC, POP
-
-; By Lukew4lker
-; Program_Manager - Retrive program information from data structure 
-; A input process number (Starting from 0), If no input then use current process.
-; b is data type offset as defined by the program manager's data structure for programs 
-; Returns B as data, A is preserved 
- 
-	:multitasker_GetInfo
-	set push, a
-	set push, c
-	set push, x
-	set x, 0x0  ; Set pre-emption check bol value to 0 so that we don't get incorrect data later.
-	ife a, 0x0
-		set pc, .usecurProg
-	mul a, 0xc  ; standard data structure size (12 bits)
-	set c, multitasker_Progs_0
-	add a, c  ;now points the process address in ram
-	
-	:.start
-	add a, b; add the off defined by the input
-	set b, [a]
-	ife x, 1 ;check's if preemption stopped
-		sub [multitasker_preemption_lock], 1
-;add ticks used handler here if used No preemption? 
-	set x, pop
-	set c, pop
-	set a, pop
-	set pc, pop
-
-	:.usecurProg
-	set x, 0x1
-	add [multitasker_preemption_lock], 1; set so that we don't don't lose the current process to a process swhich.
-	set a, [Current_process]
-	mul a, 0xc
-	set c, multitasker_Progs_0
-	add a, c
-	set pc, .start
 	
 :Current_process dat 0
 :multitasker_preemption_lock dat 1
 
 ;Definition of datastructure
 ;Current PC
+;Priority in ticks
 ;How many ticks are left
 ;Registers (ABCIXYZJ)
 ;Where the stack is hiding
 ;Where the bottom of the stack is hiding
-:multitasker_Progs_0 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_1 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_2 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_3 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_4 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_5 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_6 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_7 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_8 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_9 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_10 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_11 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_12 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_13 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_14 dat 0,0,0,0,0,0,0,0,0,0,0,0
-:multitasker_Progs_15 dat 0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_0 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_1 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_2 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_3 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_4 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_5 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_6 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_7 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_8 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_9 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_10 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_11 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_12 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_13 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_14 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
+:multitasker_Progs_15 dat 0,0,0,0,0,0,0,0,0,0,0,0,0
 :multitasker_Progs_end
 :multitasker_Prog_max
