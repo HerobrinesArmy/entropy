@@ -65,6 +65,18 @@
     SET A, [Current_process]
 	JSR pm_kill
 	
+;@name pm_changePriority
+;Changes process A's priority to B
+;@param A the process ID
+;@param B the new priority
+:pm_changePriority
+    MUL A, 0xD
+	ADD A, multitasker_Progs_0
+	ADD A, 1
+	JSR pm_priorityCheck
+	SET [A], B
+	SET PC, POP
+	
 ;@name pm_kill
 ;removes a program from the program list
 ;@params A the program ID
