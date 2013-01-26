@@ -231,7 +231,35 @@ set C, pop
 set B, pop
 set pc, pop	
 
-:fd_delete_file	;A - starting cluster
+:fd_delete_file	;A - starting cluster, output: A - 0x0 if successful, 0xFFFF if not
+set push, B
+set push, C
+set push, I
+set B, A
+set I, 0x0
+:.loop
+add B, [fd_FAT]
+set C, [B]
+set [B], 0x0
+ife C, 0xFFFF
+ set pc, .end
+set B, C
+add I, 0x1
+ifg I, 0x5A0
+	set pc, .err
+set pc, .loop
+:.end
+set I, pop
+set C, pop
+set B, pop
+set A, 0x0
+set pc, pop
+:.err
+set I, pop
+set C, pop
+set B, pop
+set A, 0x1
+set pc, pop 
 
 :fd_write_file_sector ;A - file starting cluster, B - sector number in file A, C - location in memory to read from
 jsr fd_get_file_sector
