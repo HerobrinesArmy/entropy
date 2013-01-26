@@ -167,7 +167,7 @@
 	ADD A, 0xB ; THIS IS THE PART WHERE WE LOAD A NEW PROGRAM
 	SET SP, [A] ;The stack will now return to the new program
 	SUB A, 9
-	SET [A], [A-1] ; each program gets 14 ticks
+	SET [A], [A+-1] ; each program gets 14 ticks
 	ADD A, 8 ; A now points to the J register of the new program
 	SET J, [A]
 	SUB A, 1
@@ -192,7 +192,6 @@
 	SET PUSH, [B]
 	ADD A, 1
 	SET A, [A]
-	SET [Current_process], [Current_process]
 		
 	:multitasker_Interrupt_End
     SET PC, POP
