@@ -509,7 +509,7 @@ set pc, pop
 
  
 ;by Lukew4lker
-:fd_find_file_dte ; (not tested)
+:fd_find_file_dte
 ; input
 ; a- starting address of file name string (11 chars)
 ; b - Cluster dir sector number if 0xffff use current processes wd

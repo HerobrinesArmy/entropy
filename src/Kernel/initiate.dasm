@@ -73,7 +73,7 @@ set [fd_file_table], A
 
 :pm_init
 SET B, multitasker_Progs_0
-ADD B, 10
+ADD B, 0xB
 SET C, 0
 :pm_init_loop ;allocate stack for the processes
 SET A, 20
@@ -82,7 +82,7 @@ ADD A, 19
 SET [B], A
 ADD B, 1
 SET [B], A
-ADD B, 11
+ADD B, 0xD
 ADD C, 1
 IFL C, 15
 	SET PC, pm_init_loop
