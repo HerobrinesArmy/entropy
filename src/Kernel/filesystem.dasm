@@ -41,7 +41,7 @@
 :fd_unload_drive	;unloads drive FAT
 
 :fd_change_drive	;A - drive number from 0 to [fd_drive_cap]
-set A, push
+set push, A
 mul A, 0x2
 add A, [fd_drive_table]
 set [fd_drive_cur], [A]

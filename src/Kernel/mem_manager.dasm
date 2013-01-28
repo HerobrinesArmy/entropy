@@ -86,5 +86,3 @@ set pc, pop
 set a, err_underflow
 set c, pop
 set pc, pop
-
-:current_process	.dat 0x0000
