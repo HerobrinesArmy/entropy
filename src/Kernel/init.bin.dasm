@@ -1,75 +1,28 @@
-.macro jump(label)
-:.here
-add pc, (label - .here) - 2
-.endmacro
-
-.macro getdata(register, label)
-:.here
-set register, pc
-set register, [register + ((label - .here) - 1)]
-.endmacro
-
-.macro setdata(label, register, r2)
-:.here
-set register, pc
-set [register + ((label - .here) - 1)], r2
-.endmacro
-
-;NOTE: Always preceed a macro call by a global label, like this:
-;:label012
-;jump(label017)
-;This will probably break local labels so use global ones only.
 
 ;example program:
-:dl00
-getdata(a, dat0)
-:dl01
-getdata(b, dat1)
-:dl02
-getdata(c, dat2)
-ife a, 0
-ife b, 1
-ife c, 2
-add pc, 3
-set z, 0xda7a	;data isn't what it should be
-sub pc, 1
-set b, 3
-:dl03
-setdata(dat0, a, b)
-set b, 4
-:dl04
-setdata(dat1, a, b)
-set b, 5
-:dl05
-setdata(dat2, a, b)
+hwn i
+sub i, 1
+:loop_a
+hwq i
+ife a, 0x7349
+ife b, 0xf615
+ife c, 0x1802
+ife x, 0x1c6c
+ife y, 0x8b36
+set pc, found
+std pc, loop_a
+:found
 set a, 0
-:loop
-add a, 1
-ifn a, 0
-:dl06
-jump(loop)
-:dl07
-getdata(a, dat0)
-:dl08
-getdata(b, dat1)
-:dl09
-getdata(c, dat2)
-ife a, 3
-ife b, 4
-ife c, 5
-add pc, 3
-set z, 0xda7a
-sub pc, 1
-set z, 0xcccc
-sub pc, 1
+set b, display_mem
+hwi i
+set a, 3
+set b, 4
+hwi i
 
 
-:dat0
-.dat 0x0000
-:dat1
-.dat 0x0001
-:dat2
-.dat 0x0002
-
 sub pc, 1
+
+:string .dat 'Display test...'0
+
+:display_mem .reserve 384
 
