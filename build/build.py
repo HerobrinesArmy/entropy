@@ -77,11 +77,11 @@ r = ' '
 while r != '':
     r = input('>').lower().strip()
     if r == 'help':
-        print('Available commands: o, p')
-    elif r == 'o':
+        print('Available commands: o, d')
+    elif 'o' in r:
         build = buildo
         break
-    elif r == 'p':
+    else:
         build = buildp
         break
 
@@ -89,6 +89,9 @@ if True:
     try:
         #build("Bootloader/main.dasm", "bootloader.bin", False)
         build("Kernel/main.dasm", "entropy.bin")
+        build("Kernel/disk_data.dasm", "diskdata.bin")
+        with open("../bin/diskdata.bin", "rb") as f:
+            diskdata = f.read()
         with open("buildlist.txt", "r") as f:
             builds = f.readlines()
         includes = [build(x) for x in builds]
@@ -117,22 +120,25 @@ if True:
         bytesout += entropy #entropy code
         bytesout += bytes(1024 * reservedsectors - len(bytesout)) #filler
         bytesout += inttobytes(65535, 2)
-        n = 1 #0 is root
-        firstsectors = []
-        for d in range(len(filedata)):
-            firstsectors.append(n)
-            for i in range(sizes2[d]-1):
+        if 'd' in r:
+            bytesout += diskdata
+        else:
+            n = 1 #0 is root
+            firstsectors = []
+            for d in range(len(filedata)):
+                firstsectors.append(n)
+                for i in range(sizes2[d]-1):
+                    n += 1
+                    bytesout += inttobytes(n, 2)
                 n += 1
-                bytesout += inttobytes(n, 2)
-            n += 1
-            bytesout += inttobytes(65535, 2)
-        bytesout += bytes(1024 * (reservedsectors + 3) - len(bytesout))
-        for d in range(len(filedata)):
-            bytesout += makedte(d)
-        bytesout += bytes(1024 * (reservedsectors + 4) - len(bytesout))
-        for d in range(len(filedata)):
-            bytesout += filedata[d]
-            bytesout += bytes(2 * (sizes2[d] * 512 - sizes[d]))
+                bytesout += inttobytes(65535, 2)
+            bytesout += bytes(1024 * (reservedsectors + 3) - len(bytesout))
+            for d in range(len(filedata)):
+                bytesout += makedte(d)
+            bytesout += bytes(1024 * (reservedsectors + 4) - len(bytesout))
+            for d in range(len(filedata)):
+                bytesout += filedata[d]
+                bytesout += bytes(2 * (sizes2[d] * 512 - sizes[d]))
         with open("../bin/entropy.img", "wb") as f:
             f.write(bytesout)
         print("\n====== BUILD SUCCESS ======\n")
