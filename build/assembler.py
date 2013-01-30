@@ -65,7 +65,7 @@ class assembler:
     def adddefine(self, key, expression):
         key = key.lower()
         if key in self.defines or key in self.labels or key in self.macros:
-            self.adderr('Duplicate key: ' + label)
+            self.adderr('Duplicate key: ' + key)
             return False
         self.defines[key] = expression.lower()
         self.definelocs[key] = (self.file, self.lineno)
@@ -78,7 +78,7 @@ class assembler:
         else:
             self.namespace = key
         if key in self.labels or key in self.defines or key in self.macros:
-            self.adderr('Duplicate key: ' + label)
+            self.adderr('Duplicate key: ' + key)
             return False
         self.labels[key] = self.wordno
         self.labellocs[key] = (self.file, self.lineno)
@@ -87,7 +87,7 @@ class assembler:
     def addmacro(self, key, args, lines):
         key = key.lower()
         if key in self.defines or key in self.labels or key in self.macros:
-            self.adderr('Duplicate key: ' + label)
+            self.adderr('Duplicate key: ' + key)
             return False
         self.macros[key] = (args, lines)
         self.macrolocs[key] = (self.file, self.lineno)
