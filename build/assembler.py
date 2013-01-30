@@ -64,25 +64,34 @@ class assembler:
 
     def adddefine(self, key, expression):
         key = key.lower()
-        if key in self.defines or key in self.labels:
+        if key in self.defines or key in self.labels or key in self.macros:
+            self.adderr('Duplicate key: ' + label)
             return False
         self.defines[key] = expression.lower()
         self.definelocs[key] = (self.file, self.lineno)
         return True
         
-    def addlabel(self, label):
-        label = label.lower()
-        if label[0] == '.':
-            label = self.namespace + label
+    def addlabel(self, key):
+        key = key.lower()
+        if key[0] == '.':
+            key = self.namespace + key
         else:
-            self.namespace = label
-        if label not in self.labels and label not in self.defines:
-            self.labels[label] = self.wordno
-            self.labellocs[label] = (self.file, self.lineno)
-            return True
-        else:
-            self.adderr('Label or define already exists: ' + label)
+            self.namespace = key
+        if key in self.labels or key in self.defines or key in self.macros:
+            self.adderr('Duplicate key: ' + label)
             return False
+        self.labels[key] = self.wordno
+        self.labellocs[key] = (self.file, self.lineno)
+        return True
+
+    def addmacro(self, key, args, lines):
+        key = key.lower()
+        if key in self.defines or key in self.labels or key in self.macros:
+            self.adderr('Duplicate key: ' + label)
+            return False
+        self.macros[key] = (args, lines)
+        self.macrolocs[key] = (self.file, self.lineno)
+        return True
 
     def datlines(self):
         i = 0
@@ -429,12 +438,14 @@ class assembler:
         self.labels = {}        #wordno
         self.definelocs = {}    #(file, lineno)
         self.labellocs = {}     #(file, lineno)
+        self.macrolocs = {}     #(file, lineno)
         self.file = ''
         self.lineno = 0
         self.basefile = ''
         self.words = []
         self.wordinfo = []      #(file, lineno)
         self.filelines = {}     #dictionary of filelines
+        self.macros = {}        #((args), (lines))
 
     #CONSTANTS
     opcodes = ['spc', 'set', 'add', 'sub', 'mul', 'mli', 'div', 'dvi',
@@ -479,13 +490,15 @@ class assembler:
     labelm = re.compile(r'(?:(:[A-Za-z_.][A-Za-z0-9_.]*)(?:(?:[\s]+(.*))|\Z))')
     label2m = re.compile(r'(?:([A-Za-z_.][A-Za-z0-9_.]*:)(?:(?:[\s]+(.*))|\Z))')
     wsre = re.compile(r'[\s]+')
+    notwsre = re.compile(r'[^\s]+')
     datm = re.compile(r'(?:((?::[a-z_.][a-z0-9_.]*)|' +
                       r'(?:[a-z_.][a-z0-9_.]*:))\s+)?\.?dat\s', re.IGNORECASE)
-    notwsre = re.compile(r'[^\s]+')
-    definem = re.compile(r'[.#]define[\s]', re.IGNORECASE)
-    reservem = re.compile(r'[.#]reserve[\s]', re.IGNORECASE)
-    includem = re.compile(r'[.#]include[\s]', re.IGNORECASE)
-    
+    definem = re.compile(r'[.#]define\s', re.IGNORECASE)
+    reservem = re.compile(r'[.#]reserve\s', re.IGNORECASE)
+    includem = re.compile(r'[.#]include\s', re.IGNORECASE)
+    macrom = re.compile(r'[.#]macro\s', re.IGNORECASE)
+    endmacrom = re.compile(r'[.#]endmacro', re.IGNORECASE)
+    alignm = re.compile(r'[.#]align\s', re.IGNORECASE)
     
     def __init__(self, file = None, verbose = False):
         self.reset()
@@ -501,6 +514,7 @@ class assembler:
             elif self.lines == None:
                 print("Assembly failed, couldn't access the file.")
             else:
+                self.checkmacros()
                 self.checkdefines(False)
                 self.getlabels()
                 self.checkdefines()
@@ -529,7 +543,6 @@ class assembler:
                 line = line[:-1] + self.stripcomments(lines[self.lineno +
                                                             toskip])
                 toskip += 1
-            
             if self.includem.match(line):
                 newfile = self.stringre.search(line, 9)
                 if line[9:].strip() == '':
@@ -564,8 +577,8 @@ class assembler:
                     self.adderr('Invalid key: ' + args[0])
                 elif len(args) == 1:
                     self.adderr('Value or expression expected: ' + line)
-                elif not self.adddefine(args[0], ' '.join(args[1:])):
-                    self.adderr('Duplicate key: ' + args[0])
+                else:
+                    self.adddefine(args[0], ' '.join(args[1:]))
                 continue
             m = self.datm.match(line)
             if m: #.dat
@@ -575,6 +588,70 @@ class assembler:
                 line = e + 'dat ' + line[len(m.group(0)):]
             r.append([line.lower(), self.file, self.lineno])
         return r
+
+    def checkmacros(self):
+        #find all macro definitions
+        toskip = 0
+        i = -1
+        todel = []
+        for line, self.file, self.lineno in self.lines:
+            i += 1
+            if toskip != 0:
+                toskip -= 1
+                continue
+            if self.macrom.match(line):
+                line = line[6:].strip()
+                pl = line.find('(')
+                if pl == -1:
+                    name = line
+                    args = []
+                else:
+                    name = line[:pl].strip()
+                    args = [x.strip() for x in line[pl + 1:-1].split(',')]
+                try:
+                    while not self.endmacrom.match(self.lines[i + toskip][0]):
+                        toskip += 1
+                except IndexError:
+                    self.adderr('Could not find .endmacro for: ' + line)
+                    todel.append(i)
+                    continue
+                mlines = self.lines[i + 1:i + toskip]
+                todel.extend(range(i, i + len(mlines) + 2))
+                if not name:
+                    self.adderr('Incorrect macro definition: ' + line)
+                self.addmacro(name, args, mlines)
+        todel.sort(reverse = True)
+        for i in todel:
+            del self.lines[i]
+        #replace all macro calls
+        for key in self.macros:
+            argn = str(len(self.macros[key][0]) - 1)
+            if argn == '-1':
+                reg = re.compile(key + r'(?:\s*\(\s*\)\s*)?\Z')
+            else:
+                reg = re.compile(key + r'\s*\((' + r'(?:[^,],){' + argn + 
+                                 r'}[^,]*)\)\Z')
+            i = -1
+            while True:
+                i += 1
+                if i == len(self.lines):
+                    break
+                m = reg.match(self.lines[i][0])
+                if m:
+                    if argn == '-1':
+                        self.lines[i:i + 1] = self.macros[key][1]
+                    else:
+                        self.lines[i:i + 1] = self.parsemacro(key,
+                                                              m.group(1).split(','))
+
+    def parsemacro(self, key, args):
+        argnames, lines = self.macros[key]
+        for k in range(len(argnames)):
+            reg = re.compile(r'(?<=[^A-Za-z0-9_.])' + argnames[k] +
+                             r'(?=[^A-Za-z0-9_.]|\Z)')
+            for i in range(len(lines)):
+                lines[i][0] = reg.sub(args[k], ' ' + lines[i][0])[1:]
+        return lines
 
     def checkdefines(self, unknownerrs = True):
         for key in self.defines:
@@ -627,6 +704,24 @@ class assembler:
                         break
                     else:
                         adderr('Could not solve expression: ' + line[9:])
+                        line = ''
+                        break
+                elif self.alignm.match(line):
+                    tmp = self.parse(line[7:], [], False)
+                    if tmp and tmp < self.wordno:
+                        adderr("Can't align to a passed address: " + tmp)
+                        line = ''
+                        break
+                    elif tmp and tmp == self.wordno:
+                        addwarn('Redundant .align to current address')
+                        line = ''
+                        break
+                    elif tmp:
+                        line = 'dat 0' + ', 0' * (tmp - self.wordno - 1)
+                        self.wordno = tmp
+                        break
+                    else:
+                        adderr('Could not solve expression: ' + line[7:])
                         line = ''
                         break
                 #add namespace to lines
@@ -742,6 +837,7 @@ class assembler:
 
 
 
+
 if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('-q', '--quiet', action = 'store_true',
@@ -750,6 +846,7 @@ if __name__ == '__main__':
         help = "use big endian instead of little endian for output")
     parser.add_option('-d', '--datfile', action = 'store_true',
         help = "create a file with dat statements instead of a binary file")
+    parser.add_option('-l', '--listing', help = "create a listing file")
     options, args = parser.parse_args()
 
     if len(args) < 2:
