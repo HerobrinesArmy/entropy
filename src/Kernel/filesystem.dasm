@@ -429,6 +429,44 @@ set B, pop
 set X, pop
 set pc, pop
 
+:fd_delete		;deletes file A in dir B, 
+;A being the address of the 1st byte of the filename (11char),
+;B - 1st cluster of a dir, 0xFFFF if using current process's wd
+jsr fd_find_file_dte
+set push, X
+set push, A
+set A, 0x200
+jsr mm_request_memory
+set X, A
+set C, X
+set A, B
+jsr fd_load_sector
+set push, I
+set push, J
+set I, 0x0
+set J, pop
+mul J, 0x10
+add J, X
+add J, 0xE
+set C, [J]
+sub J, 0xE
+:.loop
+sti [J], 0x0
+ifn I, 0x10
+	set pc, .loop
+set J, pop
+set I, pop
+set A, C
+jsr fd_delete_file
+set push, A
+set A, B
+set C, X
+jsr fd_write_sector
+set A, X
+jsr mm_free_memory
+set X, pop
+set pc, pop
+
 :fd_assign		;copies C words from A to B
 ife C, 0x0
 	set pc, pop
