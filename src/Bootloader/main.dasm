@@ -37,7 +37,7 @@ set a, 0
 hwi i
 ife b, 3
 set pc, loop_b + 0xff00
-ifn [0x0], {add pc, 15} ;Flags disk bpotable
+ifn [0x0], {add pc, 15} ;Flags disk bootable
 sti pc, loop_a + 0xff00
 ;Found bootable disk!
 set [0xffff], i
