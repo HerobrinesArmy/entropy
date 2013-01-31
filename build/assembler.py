@@ -188,6 +188,46 @@ class assembler:
                 else:
                     return ''
 
+    def checkcode(self):
+        i = -1
+        l = len(self.words)
+        msgs = []
+        while i < l - 1:
+            i += 1
+            w = self.words[i]
+            op = w & 31
+            b = (w >> 5) & 31
+            a = (w >> 10) & 63
+            if 'nw' in self.values[a]:
+                i += 1
+                a2 = self.words[i]
+            else: a2 = None
+            if op and 'nw' in self.values[b]:
+                i += 1
+                b2 = self.words[i]
+            else: b2 = None
+            if op == 0:
+                #special opcode
+                op = b
+                if op in [16]:
+                    if a > 30:
+                        msgs.append(('Trying to assign to a literal', i))
+                if op in [12]:
+                    if a == 31:
+                        msgs.append(('Shortform can be used here', i))
+            else:
+                #normal opcode
+                if op < 16 or op > 23:
+                    if b > 30:
+                        msgs.append(('Trying to assign to a literal', i))
+                if op == 1:
+                    if a == b and a2 == b2:
+                        msgs.append(('Assigning value to itself', i))
+        for i in msgs:
+            print(self.wordinfo[i[1]][0],
+                  str(self.wordinfo[i[1]][1]) + ': ' + i[0])
+                
+
     def disassemble(self, source, start = 0):
         r = []
         i = start - 1
@@ -267,12 +307,12 @@ class assembler:
                 s.append((r[2 * i] << 8) + r[2 * i + 1])
             if lenpf:
                 s = [l] + s
-            return str(s)[1:-1]
+            return s
         else:
             #one char per word
             if lenpf:
                 r = [l] + r
-            return str(r)[1:-1]
+            return r
     
     def printreport(self):
         if not self.errors and not self.warnings:
@@ -446,6 +486,7 @@ class assembler:
         self.wordinfo = []      #(file, lineno)
         self.filelines = {}     #dictionary of filelines
         self.macros = {}        #((args), (lines))
+        self.success = False
 
     #CONSTANTS
     opcodes = ['spc', 'set', 'add', 'sub', 'mul', 'mli', 'div', 'dvi',
@@ -519,6 +560,8 @@ class assembler:
                 self.getlabels()
                 self.checkdefines()
                 self.assemble()
+                if not self.errors and not self.warnings:
+                    self.success = True
                 if verbose:
                     self.printreport()
 
@@ -583,8 +626,8 @@ class assembler:
             m = self.datm.match(line)
             if m: #.dat
                 e = m.group(1) + ' ' if m.group(1) else ''
-                line = self.strpre.sub(lambda x: self.stringtodat(x.group(0)),
-                                       line)
+                line = self.strpre.sub(
+                    lambda x: str(self.stringtodat(x.group(0)))[1:-1], line)
                 line = e + 'dat ' + line[len(m.group(0)):]
             r.append([line.lower(), self.file, self.lineno])
         return r
@@ -709,7 +752,7 @@ class assembler:
                 elif self.alignm.match(line):
                     tmp = self.parse(line[7:], [], False)
                     if tmp and tmp < self.wordno:
-                        adderr("Can't align to a passed address: " + tmp)
+                        adderr("Can't align to a previous address: " + tmp)
                         line = ''
                         break
                     elif tmp and tmp == self.wordno:
@@ -837,7 +880,6 @@ class assembler:
 
 
 
-
 if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('-q', '--quiet', action = 'store_true',
@@ -846,7 +888,7 @@ if __name__ == '__main__':
         help = "use big endian instead of little endian for output")
     parser.add_option('-d', '--datfile', action = 'store_true',
         help = "create a file with dat statements instead of a binary file")
-    parser.add_option('-l', '--listing', help = "create a listing file")
+    #parser.add_option('-l', '--listing', help = "create a listing file")
     options, args = parser.parse_args()
 
     if len(args) < 2:
