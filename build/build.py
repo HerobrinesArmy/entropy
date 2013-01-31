@@ -1,116 +1,220 @@
 #! /usr/bin/env python3.3
 
-import os, platform, sys, random
+from assembler import assembler
+import random
 
-def addexeh(code):
-        pass
+def stripdir(path):
+    path = path[max(path.rfind('/'), path.rfind('\\')) + 1:]
+    return path [:path.rfind('.')]
 
-def build(f, outname="", le=True):
-	if outname == "":
-		outname = f[f.rfind("/")+1:f.rfind(".")] + ".bin"
-	print("Building: ", outname)
-	c = ""
-	if platform.system() != "Windows":
-		c += "mono ../tools/Organic.exe ../src/"
-	else:
-                c += "..\\tools\\Organic.exe ../src/"
-	c += f +  " ../bin/" + outname
-	c += " --working-directory ../src/" + f[:f.rfind("/")+1]
-	if le:
-		c += " --little-endian"
-	os.system(c)
-	return outname
+class diskfile:
+    def __init__(self, diskname, contents):
+        dl = diskname.rfind('.')
+        self.name = (diskname[:dl] + '\0' * 8)[:8]
+        self.ext = (diskname[dl + 1:] + '\0' * 3)[:3]
+        self.contents = contents
+        self.len = len(contents)
+        self.slen = ((self.len - 1) >> 9) + 1
+        self.fs = 1 if self.len > 0 else 65535
 
-def waitkey():
-	input("Press Enter to continue...")
+    def getdte(self):
+        dte = []
+        dte.extend(entropy.stringtodat('"' + self.name + '"')) #filename
+        dte.extend(entropy.stringtodat('"' + self.ext + '"')) #ext and flags
+        dte.extend([0, 0, 0, 0, 0, 0]) #times
+        dte.extend([0, self.len]) #size in words
+        dte.append(self.fs) #first sector
+        dte.append(0) #unused
+        return dte
 
-def inttobytes(int, minbytes=0):
-	result = []
-	while int > 0 or minbytes > 0:
-		minbytes -= 1
-		result.append(int & 255)
-		int >>= 8
-	return bytes(result)
+    def getcontents(self, parentdte):
+        return self.contents + [0] * (self.slen * 512 - self.len)
 
-def makedte(num):
-	if num > 30:
-		return b""
-	result = b""
-	name = includes[num]
-	name = name[:name.rfind(".")]
-	name = name[:name.rfind(".")]
-	name = bytes(name, "utf-8")[:8]
-	result += name #name
-	result += bytes(8 - len(result)) #name padding
-	ext = bytes(includes[num], "utf-8")[9:12]
-	result += ext #extension
-	if ext == b"bin":
-		result += inttobytes(64) #flags
-	else:
-		result += bytes(1) #flags
-	result += bytes(12) #times
-	result += inttobytes(sizes[num], 4) #file size
-	result += inttobytes(firstsectors[num], 2) #first sector
-	result += bytes(2) #reserved
-	result = result[1:2] + result[0:1] + result[3:4] + result [2:3] + \
-			result [5:6] + result[4:5] + result[7:8] + result[6:7] + \
-			result[9:10] + result[8:9] + result[11:12] + result[10:11] + \
-			result[12:24] + result[26:28] + result[24:26] + result[28:]
-	return result
-	
-try:
-	build("Bootloader/main.dasm", "bootloader.bin", False)
-	build("Kernel/main.dasm", "entropy.bin")
-	with open("buildlist.txt", "r") as f:
-		builds = f.readlines()
-	includes = [build(x) for x in builds]
-	with open("includelist.txt", "r") as f:
-		includes += f.readlines()
-	filedata = []
-	for i in includes:
-		with open("../bin/" + i, "rb") as f:
-			filedata.append(f.read())
-	sizes = [len(x)//2 for x in filedata]
-	with open("../bin/bootloader.bin", "rb") as f:
-		bootloader = f.read()
-	with open("../bin/entropy.bin", "rb") as f:
-		f.seek(32)
-		entropy = f.read()
-	sizes2 = [(a >> 9) + 1 for a in sizes]
-	reservedsectors = ((len(entropy) + 32) >> 10) + 1
-	bytesout = bytes.fromhex("82c3") #bootflag
-	bytesout += bytes.fromhex("164a") #filesystem descriptor
-	bytesout += bytes("nErtpo\0y\0\0\0\0", "utf-8") #disk name
-	bytesout += inttobytes(reservedsectors, 2) #reserved sectors
-	bytesout += inttobytes(1, 2) #FAT tables
-	bytesout += inttobytes(512, 2) #words per sector
-	bytesout += inttobytes(1440, 2) #number of sectors on disk
-	bytesout += inttobytes(random.randint(0, 2 ** 64 - 1), 4) #random ID
-	bytesout += entropy #entropy code
-	bytesout += bytes(1024 * reservedsectors - len(bytesout)) #filler
-	bytesout += inttobytes(65535, 2)
-	n = 1 #0 is root
-	firstsectors = []
-	for d in range(len(filedata)):
-		firstsectors.append(n)
-		for i in range(sizes2[d]-1):
-			n += 1
-			bytesout += inttobytes(n, 2)
-		n += 1
-		bytesout += inttobytes(65535, 2)
-	bytesout += bytes(1024 * (reservedsectors + 3) - len(bytesout))
-	for d in range(len(filedata)):
-		bytesout += makedte(d)
-	bytesout += bytes(1024 * (reservedsectors + 4) - len(bytesout))
-	for d in range(len(filedata)):
-		bytesout += filedata[d]
-		bytesout += bytes(2 * (sizes2[d] * 512 - sizes[d]))
-	with open("../bin/entropy.img", "wb") as f:
-		f.write(bytesout)
-	print("\n====== BUILD SUCCESS ======\n")
-except:
-	print("\n====== BUILD FAILED ======\n")
-	waitkey()
-	raise
+    def setoffset(self, amount):
+        self.fs = amount if self.len > 0 else 65535
 
-waitkey()
+class diskdir:
+    def __init__(self, diskname):
+        self.name = (diskname + '\0' * 8)[:8]
+        self.contents = []
+        self.len = 16
+        self.slen = 1
+        self.fs = 0
+        self.diskitems = []
+        self.changed = True
+
+    def getdte(self):
+        dte = []
+        dte.extend(entropy.stringtodat('"' + self.name + '"')) #filename
+        dte.extend(entropy.stringtodat('"dir"')) #ext
+        dte[-1] = dte[-1] | 16 #flags
+        dte.extend([0, 0, 0, 0, 0, 0]) #times
+        dte.extend([0, len(self.diskitems) * 16]) #size in words
+        dte.append(self.fs) #first sector
+        dte.append(0) #unused
+        return dte
+
+    def additem(self, diskitem, path = ''):
+        if path:
+            sl = min(path.find('/'), path.find('\\'))
+            ndir = path[:min(sl, 8)]
+            npath = path[sl + 1:]
+            for di in self.diskitems:
+                if type(di) == diskdir and di.name == ndir:
+                    di.additem(diskitem, npath)
+                    break
+        else:
+            self.diskitems.append(diskitem)
+            self.len = (len(self.diskitems) + 1) * 16
+            self.slen = ((len(self.diskitems)) >> 5) + 1 #-1+1
+        self.changed = True
+
+    def setoffset(self, amount):
+        self.fs = amount
+        for i in range(len(self.diskitems)):
+            self.diskitems[i].setoffset(amount + self.fsecs[i])
+
+    def getfsecs(self):
+        self.changed = False
+        self.slens = []
+        self.fsecs = []
+        for di in self.diskitems:
+            self.fsecs.append(sum(self.slens) + self.slen)
+            if type(di) == diskfile:
+                self.slens.append(di.slen)
+            elif type(di) == diskdir:
+                self.slens.append(di.getfsecs())
+            di.setoffset(self.fsecs[-1])
+        return sum(self.slens) + self.slen
+
+    def getfsecs2(self):
+        if self.changed:
+            return self.getfsecs()
+        else:
+            return sum(self.slens) + self.slen
+
+    def getfat(self):
+        self.getfsecs2()
+        fat = []
+        if self.diskitems:
+            fat.extend(range(self.fs + 1, self.fs + self.slen))
+            fat.append(65535)
+        for di in self.diskitems:
+            if type(di) == diskfile:
+                if di.slen > 0:
+                    fat.extend(range(di.fs + 1, di.fs + di.slen))
+                    fat.append(65535)
+            elif type(di) == diskdir:
+                if di.slen > 0:
+                    fat.extend(di.getfat())
+        return fat
+
+    def getcontents(self, parentdte):
+        self.getfsecs2()
+        r = parentdte
+        #DTE table
+        for di in self.diskitems:
+            r.extend(di.getdte())
+        r.extend([0] * (self.slen * 512 - len(r)))
+
+        #contents
+        for di in self.diskitems:
+            r.extend(di.getcontents(self.getdte()))
+        return r
+
+    def getcontents2(self):
+        self.getfsecs2()
+        #FAT table
+        r = self.getfat()
+        r.extend([0] * (1536 - len(r)))
+        #DTE table
+        #data
+        r.extend(self.getcontents(self.getdte()))
+        return r
+                
+
+usedd = False
+usebe = False
+
+print('Press enter to load default configuration.')
+print('Type characters for other configurations.')
+print('d = use disk_data.dasm, b = use big endian.')
+config = input('usr>')
+if 'd' in config: usedd = True
+if 'b' in config: usebe = True
+
+if True:
+    try:
+        entropy = assembler('../src/Kernel/main.dasm', True)
+        if not entropy.success:
+            print('Entropy main file missing!')
+            exit()
+        diskdata = assembler('../src/Kernel/disk_data.dasm', True)
+        if not diskdata.success:
+            print('disk_data.dasm missing, diskdata option unavailable')
+            usedd = False
+        disklist = entropy.readfile('disklist.txt')
+        filedata = []
+        if not disklist:
+            print('disklist.txt not found, no files were added.')
+
+        sizes = [len(x) for x in filedata]
+        ssizes = [((x - 1) >> 9) + 1 for x in sizes]
+        rs = ((len(entropy.words) - 1) >> 9) + 1
+        out = []
+        out.append(0xc382)      #bootflag
+        out.append(0x164a)      #filesystem descriptor
+        out.extend(entropy.stringtodat('"EntropyLive\0"')) #disk name
+        out.append(rs)          #reserved sectors
+        out.append(1)           #number of FAT tables
+        out.append(512)         #words per sector
+        out.append(1440)        #number of sectors on disk
+        out.append(random.randint(0, 65535))
+        out.append(random.randint(0, 65535))
+        out.append(random.randint(0, 65535))
+        out.append(random.randint(0, 65535)) #random disk ID
+        out.extend(entropy.words[16:]) #entropy code
+        out.extend([0] * (512 * rs - len(out))) #filler
+        if usedd:
+            out.extend(diskdata.words)
+        elif disklist:
+            root = diskdir('')
+            for i in disklist:
+                if '"' in i or "'" in i:
+                    args = entropy.stringre.findall(i)
+                    args = [x[1:-1] for x in args]
+                else:
+                    args = entropy.notwsre.findall(i)
+                com = args[0] if len(args) > 0 else ''
+                file = args[1] if len(args) > 1 else ''
+                path = args[2] if len(args) > 2 else ''
+                if com == 'bin':
+                    file = '../bin/' + file
+                    tmp = entropy.readbin(file)
+                    if tmp:
+                        root.additem(diskfile(stripdir(file), tmp.words), path)
+                    else:
+                        print('Failed to access file: ' + i)
+                elif com == 'file':
+                    file = '../src/' + file
+                    tmp = assembler(file, True)
+                    if tmp.success:
+                        root.additem(diskfile(stripdir(file), tmp.words), path)
+                elif com == 'dir':
+                    root.additem(diskdir(file), path)
+                else:
+                    print('Could not interpret disklist entry: ', i)
+            out.extend(root.getcontents2())
+        if not entropy.writebin('../bin/entropy.img', out, not usebe):
+            print('Could not access output file: ../bin/entropy.img')
+        else:
+            print('\n====== BUILD SUCCESS ======\n')
+    except:
+        print('\n====== BUILD FAILED ======\n')
+        nul = input('Press enter to continue...')
+        raise
+    nul = input('Press enter to continue...')
+
+
+
+            

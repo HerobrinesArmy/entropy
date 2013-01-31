@@ -1,0 +1,8 @@
+file Kernel/init.bin.dasm
+dir lib
+dir drv
+dir cfg
+dir klog
+dir user
+dir prog
+dir boot
