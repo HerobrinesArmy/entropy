@@ -865,7 +865,6 @@ set pc, pop
 :fd_apply ; Apply changes to file A. Do this before loading another sector in the file.
 :fd_discard ; Discard changes to file A. Will reload the current sector from disk.
 :fd_create ; Create file, dir or link A with flags B.
-:fd_delete ; Delete file, dir or link A.
 :fd_move ; Move file, dir or link A.
 :fd_get_flags ; Get the flags for file A.
 :fd_set_flags ; Set the flags for file A to B. Some flag changes will be reverted before applying.
