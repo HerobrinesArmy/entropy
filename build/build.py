@@ -49,20 +49,27 @@ class diskdir:
         dte.extend(entropy.stringtodat('"dir"')) #ext
         dte[-1] = dte[-1] | 16 #flags
         dte.extend([0, 0, 0, 0, 0, 0]) #times
-        dte.extend([0, len(self.diskitems) * 16]) #size in words
+        dte.extend([0, len(self.diskitems) * 16 + 16]) #size in words
         dte.append(self.fs) #first sector
         dte.append(0) #unused
         return dte
 
     def additem(self, diskitem, path = ''):
         if path:
-            sl = min(path.find('/'), path.find('\\'))
-            ndir = path[:min(sl, 8)]
-            npath = path[sl + 1:]
+            path = path.replace('\\', '/')
+            sl = path.find('/')
+            if sl >= 0:
+                ndir = (path + '\0' * 8)[:min(sl, 8)]
+                npath = path[sl + 1]
+            else:
+                ndir = (path + '\0' * 8)[:8]
+                npath = ''
             for di in self.diskitems:
                 if type(di) == diskdir and di.name == ndir:
                     di.additem(diskitem, npath)
                     break
+            else:
+                print('Warning: Invalid ondisk path: ' + ndir)
         else:
             self.diskitems.append(diskitem)
             self.len = (len(self.diskitems) + 1) * 16
