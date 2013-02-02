@@ -27,54 +27,38 @@
         HWQ J
         IFE B, 0x30CF
             IFE A, 0x7406
-			    .longform
                 :lib_STDIO_RELOC1 JSR lib_STDIO_initKeyboard
-				.shortform
         IFE B, 0x7349
             IFE A, 0xF615 
-			    .longform
                 :lib_STDIO_RELOC2 JSR lib_STDIO_initScreen
-				.shortform
         IFE B, 0xBF3C
             IFE A, 0x42BA
-			    .longform
                 :lib_STDIO_RELOC3 JSR lib_STDIO_initProjector
-				.shortform
         SUB J, 1
         IFA J, -1
-		.longform
             :lib_STDIO_RELOC4 SET PC, lib_STDIO_initLoop
         :lib_STDIO_RELOC5 SET PC, lib_STDIO_initLoopEnd
-		.shortform
     :lib_STDIO_initScreen
     ;Save HW id of monitor, then turn on with buffer at 0x8000
-	.longform
     :lib_STDIO_RELOC6 SET [lib_STDIO_monitorID], J
-	.shortform
     SET A, 0
     SET B, 0x8000
     HWI J
     SET PC, POP
     :lib_STDIO_initKeyboard
     ;Save HW id of keyboard
-	.longform
     :lib_STDIO_RELOC7 SET [lib_STDIO_KeyboardID], J
-	.shortform
     SET PC, POP
     :lib_STDIO_initProjector
     ;Save HW id of projector
-	.longform
     :lib_STDIO_RELOC8 SET [lib_STDIO_ProjectorID], J
-	.shortform
     SET PC, POP
     :lib_STDIO_initLoopEnd
     ;Set bounds for monitor buffer
-	.longform
     :lib_STDIO_RELOC9 SET [lib_STDIO_MonitorPos], 0x8000
     :lib_STDIO_RELOC10 SET [lib_STDIO_MonitorStart], [lib_STDIO_MonitorPos]
     :lib_STDIO_RELOC11 SET [lib_STDIO_MonitorEnd], [lib_STDIO_MonitorPos]
     :lib_STDIO_RELOC12 ADD [lib_STDIO_MonitorEnd], 386
-	.shortform
     SET PC, POP
 
 ;@name lib_STDIO_getChar
@@ -105,28 +89,20 @@
     SET I, 0
     :lib_STDIO_getCharLoop
         SET A, 1
-		.longform
         :lib_STDIO_RELOC13 HWI [lib_STDIO_KeyboardID]
-		.shortform
         IFE C, 0
             IFN X, 0
-			    .longform
                 :lib_STDIO_RELOC14 SET PC, lib_STDIO_getCharLoop
-				.shortform
         IFE C, 0x0010
             IFL Y, Z
                 SUB Z, 0x0001
         SET [Z], C
         ADD Z, 0x0001
         IFE C, 0
-		    .longform
             :lib_STDIO_RELOC15 SET PC, lib_STDIO_getCharLoopEnd
-			.shortform
         ADD I, 1
         IFN I, B
-		    .longform
             :lib_STDIO_RELOC16 SET PC, lib_STDIO_getCharLoop
-			.shortform
     :lib_STDIO_getCharLoopEnd
     SET I, POP
     SET X, POP
@@ -146,42 +122,28 @@
     ADD B, A
     :lib_STDIO_printLoop
         IFE [A], 0x0010
-		    .longform
             :lib_STDIO_RELOC17 SET PC, lib_STDIO_printLoopBack
-			.shortform
         IFE [A], 0x0011
-            .longform
             :lib_STDIO_RELOC18 JSR lib_STDIO_enter
-			.shortform
         IFE [A], 0x0011
-            .longform
             :lib_STDIO_RELOC19 SET PC, lib_STDIO_printLoopCont
         :lib_STDIO_RELOC20 SET PC, lib_STDIO_printLoopPrint
         :lib_STDIO_printLoopBack
             :lib_STDIO_RELOC21 SUB [lib_STDIO_MonitorPos], 1
             :lib_STDIO_RELOC22 SET I, [lib_STDIO_MonitorPos]
-			.shortform
             SET [I], 0
-			.longform
             :lib_STDIO_RELOC23 SET PC, lib_STDIO_printLoopCont
-			.shortform
         :lib_STDIO_printLoopPrint
             BOR [A], C
-			.longform
             :lib_STDIO_RELOC24 SET I, [lib_STDIO_MonitorPos]
-			.shortform
             SET [I], [A]
-			.longform
             :lib_STDIO_RELOC25 ADD [lib_STDIO_MonitorPos], 1
         :lib_STDIO_printLoopCont
         :lib_STDIO_RELOC26 IFE [lib_STDIO_MonitorPos], [lib_STDIO_MonitorEnd]
             :lib_STDIO_RELOC27 JSR lib_STDIO_scroll
-			.shortform
         ADD A, 1
         IFN A, B
-		    .longform
             :lib_STDIO_RELOC28 SET PC, lib_STDIO_printLoop
-			.shortform
     :lib_STDIO_printEnd
     SET I, POP
     SET PC, POP
@@ -196,31 +158,25 @@
     SET PUSH, X
     SET PUSH, Y
     SET PUSH, A
-	.longform
     :lib_STDIO_RELOC29 SET X, [lib_STDIO_MonitorStart]
-	.shortform
     SET Y, 0x20
     ADD Y, X
     :lib_STDIO_scrollLoopOne
         SET [X], [Y]
         ADD X, 1
         ADD Y, 1
-		.longform
         :lib_STDIO_RELOC30 IFG Y, [lib_STDIO_MonitorEnd]
             :lib_STDIO_RELOC31 SET PC, lib_STDIO_scrollLoopTwo
         :lib_STDIO_RELOC32 SET PC, lib_STDIO_scrollLoopOne
-		.shortform
         :lib_STDIO_scrollLoopTwo
             SET A, 0
             SET [X], A
             ADD X, 1
-			.longform
             :lib_STDIO_RELOC33 IFG X, [lib_STDIO_MonitorEnd]
                 :lib_STDIO_RELOC34 SET PC, lib_STDIO_scrollEnd
             :lib_STDIO_RELOC35 SET PC, lib_STDIO_scrollLoopTwo
     :lib_STDIO_scrollEnd
         :lib_STDIO_RELOC36 SUB [lib_STDIO_MonitorPos], 0x20
-		.shortform
         SET A, POP
         SET Y, POP
         SET X, POP
@@ -232,20 +188,16 @@
 :lib_STDIO_enter
     SET PUSH, J
     SET PUSH, A
-	.longform
     :lib_STDIO_RELOC37 SET A, [lib_STDIO_MonitorPos]
-	.shortform
     SET J, A
     MOD J, 0x0020
     SUB A, J
     ADD A, 0x0020
-	.longform
     :lib_STDIO_RELOC38 IFG A, [lib_STDIO_MonitorEnd]
         :lib_STDIO_RELOC39 SET A, [lib_STDIO_MonitorStart]
     :lib_STDIO_RELOC40 SET [lib_STDIO_MonitorPos], A
     :lib_STDIO_RELOC41 IFG A, [lib_STDIO_MonitorEnd]
         :lib_STDIO_RELOC42 JSR lib_STDIO_scroll
-	.shortform
     SET A, POP
     SET J, POP
     SET PC, POP
@@ -262,14 +214,10 @@
 :lib_STDIO_SPED3_PUSH
     SET PUSH, A
     SET A, 0
-	.longform
     :lib_STDIO_RELOC43 JSR lib_STDIO_SPED3_PUT
-	.shortform
     SET A, POP
-	.longform
     :lib_STDIO_RELOC44 SET C, [lib_STDIO_Projector_StackPos]
     :lib_STDIO_RELOC45 SUB C, lib_STDIO_Projector_Stack
-	.shortform
     SUB C, 2
     DIV C, 2
     SET PC, POP
@@ -290,15 +238,11 @@
         ADD PC, 5
     MUL A, 2
     ADD A, 2
-	.longform
     :lib_STDIO_RELOC46 ADD C, lib_STDIO_Projector_Stack
-	.shortform
     ADD PC, 4
     
     ;SET A to the top vertex
-	.longform
     :lib_STDIO_RELOC47 SET A, [lib_STDIO_Projector_StackPos]
-	.shortform
     SUB A, 2
     SET B, 1
    
@@ -309,9 +253,7 @@
     SET [A], Y
     IFE B, 0
         ADD PC, 3
-	.longform
     :lib_STDIO_RELOC48 ADD [lib_STDIO_Projector_StackPos], 1
-	.shortform
     ADD PC, 1
     
     ADD A, 1
@@ -322,9 +264,7 @@
     SET [A], C
     IFE B, 0
         ADD PC, 3
-	.longform
     :lib_STDIO_RELOC49 ADD [lib_STDIO_Projector_StackPos], 1
-	.shortform
     ADD PC, 1
     
     ADD A, 1
@@ -332,17 +272,13 @@
     SET B, POP
     SET PUSH, X
     SET PUSH, Y
-	.longform
     :lib_STDIO_RELOC50 SET X, lib_STDIO_Projector_Stack
     :lib_STDIO_RELOC51 SET Y, [lib_STDIO_Projector_StackPos]
     :lib_STDIO_RELOC52 SUB Y, lib_STDIO_Projector_Stack
-	.shortform
     SUB Y, 2
     DIV Y, 2
     SET A, 1
-	.longform
     :lib_STDIO_RELOC53 HWI [lib_STDIO_ProjectorID]
-	.shortform
     SET Y, POP
     SET X, POP
     SET PC, POP
@@ -361,15 +297,11 @@
         ADD PC, 5
     MUL C, 2
     ADD C, 2
-	.longform
     :lib_STDIO_RELOC54 ADD C, lib_STDIO_Projector_Stack
-	.shortform
     ADD PC, 3
     
     ;SET C to the top vertex
-	.longform
     :lib_STDIO_RELOC55 SET C, [lib_STDIO_Projector_StackPos]
-	.shortform
     SUB C, 2
     
     SET X, [C]

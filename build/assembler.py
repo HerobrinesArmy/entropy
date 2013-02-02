@@ -11,11 +11,11 @@ class assembler:
         except IOError:
             return None
 
-    def writefile(self, file, lines):
+    def writefile(self, file, lines, end = '\n'):
         try:
             with open(file, 'w') as f:
                 for line in lines:
-                    f.write(line + '\n')
+                    f.write(line + end)
             return True
         except IOError:
             return False
@@ -383,7 +383,8 @@ class assembler:
             if tmp == None: return 1
             else:
                 tmp = tmp % 65536
-                if a and (tmp <= 30 or tmp == 65535) and not m:
+                if a and (tmp <= 30 or tmp == 65535) \
+                   and not m and not self.longform:
                     return ((tmp + 33) % 65536,)
                 else:
                     return (31, tmp)
@@ -401,7 +402,7 @@ class assembler:
 
         #We know there is no label or define now.
         if re.search(r'(?:0x[0-9a-fA-F]+)|(?:-?[0-9]+)', arg):
-            if a and self.numm.match(arg):
+            if a and self.numm.match(arg) and not self.longform:
                 n = int(arg, 0)
                 while n < 0:
                     n += 65536
@@ -487,6 +488,7 @@ class assembler:
         self.filelines = {}     #dictionary of filelines
         self.macros = {}        #((args), (lines))
         self.success = False
+        self.longform = False
 
     #CONSTANTS
     opcodes = ['spc', 'set', 'add', 'sub', 'mul', 'mli', 'div', 'dvi',
@@ -540,6 +542,8 @@ class assembler:
     macrom = re.compile(r'[.#]macro\s', re.IGNORECASE)
     endmacrom = re.compile(r'[.#]endmacro', re.IGNORECASE)
     alignm = re.compile(r'[.#]align\s', re.IGNORECASE)
+    longformm = re.compile(r'[.#]longform', re.IGNORECASE)
+    shortformm = re.compile(r'[.#]shortform', re.IGNORECASE)
     
     def __init__(self, file = None, verbose = False):
         self.reset()
@@ -654,6 +658,9 @@ class assembler:
                 try:
                     while not self.endmacrom.match(self.lines[i + toskip][0]):
                         toskip += 1
+                    if self.lines[i + toskip][0][9:].strip() != '':
+                        self.addwarn('Did not evaluate after .endmacro' +
+                                     self.lines[i + toskip][0][9:].strip())
                 except IndexError:
                     self.adderr('Could not find .endmacro for: ' + line)
                     todel.append(i)
@@ -767,15 +774,38 @@ class assembler:
                         adderr('Could not solve expression: ' + line[7:])
                         line = ''
                         break
+                elif self.longformm.match(line):
+                    if line[9:].strip() != '':
+                        self.addwarn('Did not evaluate after .longform' +
+                                     line[9:].strip())
+                    if self.longform:
+                        self.addwarn('Redundant .longform, already in ' +
+                                     'longform mode.')
+                        line = ''
+                    else:
+                        self.longform = True
+                        line = '#longform'
+                elif self.shortformm.match(line):
+                    if line[10:].strip() != '':
+                        self.addwarn('Did not evaluate after .longform' +
+                                     line[10:].strip())
+                    if not self.longform:
+                        self.addwarn('Redundant .shortform, already in ' +
+                                     'shortform mode.')
+                        line = ''
+                    else:
+                        self.longform = False
+                        line = '#shortform'
                 #add namespace to lines
                 line = self.localre.sub(lambda m: self.namespace + m.group(0),
                                         ' ' + line)[1:]
-                tmp = self.codelen(line, True)
-                if tmp:
-                    self.wordno += tmp[0]
-                    line = tmp[1]
-                else:
-                    line = ''
+                if line[0:1] != '#':
+                    tmp = self.codelen(line, True)
+                    if tmp:
+                        self.wordno += tmp[0]
+                        line = tmp[1]
+                    else:
+                        line = ''
                 break
             if line:
                 lines.append([line, self.file, self.lineno])
@@ -835,6 +865,12 @@ class assembler:
                 return [0] * (a + 1)
             return a
         for line, self.file, self.lineno in self.lines:
+            if line == '#shortform':
+                self.longform = False
+                continue
+            elif line == '#longform':
+                self.longform = True
+                continue
             op = line[:3]
             if op == 'dat':
                 args = line[4:].split(', ')
@@ -876,7 +912,7 @@ class assembler:
                 if len(a) == 2:
                     self.words.append(a[1])
                     self.wordinfo.append((self.file, self.lineno))
-
+        assert self.wordno == len(self.words)
 
 
 

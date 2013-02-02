@@ -16,9 +16,7 @@
     SET PUSH, X
     SET PUSH, Y
     SET PUSH, Z
-    .longform
 :lib_rng_RELOC1 JSR lib_rng_generate
-    .shortform
     SET Z, POP
     SET Y, POP
     SET X, POP
@@ -29,42 +27,28 @@
 ; -----------------------------------------------------------------------------
 
 :lib_rng_init
-    .longform
 :lib_rng_RELOC2 SET I, lib_rng_padding
-    .shortform
     :lib_rng_initloop
         STI [I], 12
-        .longform
 :lib_rng_RELOC3 IFN I, lib_rng_checksum
 :lib_rng_RELOC4     SET PC, lib_rng_initloop
-        .shortform
     :lib_rng_initloop2
         STI [I], 0
-        .longform
 :lib_rng_RELOC5 IFN I, lib_rng_s_table
 :lib_rng_RELOC6     SET PC, lib_rng_initloop2
 :lib_rng_RELOC7 SET [lib_rng_firstrun_flag], 1 ; RELOC7+2
-        .shortform
     SET PC, POP
 
 :lib_rng_generate_checksum
-    .longform
 :lib_rng_RELOC8 SET [lib_rng_firstrun_flag], 0 ; Same as RELOC7.
-    .shortform
     SET I, 0 ; I := L
     SET J, 0 ; Checksum inner loop counter.
     :lib_rng_checksumloop
-        .longform
 :lib_rng_RELOC9 SET X, lib_rng_checksum
-        .shortform
         ADD X, J ; [X] := C[j]
-        .longform
 :lib_rng_RELOC10 SET Y, lib_rng_seed_firstbyte
-        .shortform
         ADD Y, J ; [Y] := M[i*16 + j] where i = 0.
-        .longform
 :lib_rng_RELOC11 SET Z, lib_rng_s_table
-        .shortform
         SET C, [Y]
         XOR C, I ; C := c xor L
         ADD Z, C ; [Z] := S[c xor L]
@@ -72,15 +56,12 @@
         SET I, [X]
         ADD J, 1
         IFN J, 16
-            .longform
 :lib_rng_RELOC12 SET PC, lib_rng_checksumloop
-            .shortform
     SET PC, POP
 
 :lib_rng_generate ; A is location where random number should be written to.
     SET PUSH, A
     JSR [0x06] ; cd_get_sys_time
-    .longform ; All of these except for the last 2 need to be +2.
 :lib_rng_RELOC13 SET [lib_rng_seed_firstbyte], B
 :lib_rng_RELOC14 SHR [lib_rng_seed_firstbyte], 8
 :lib_rng_RELOC15 SET [lib_rng_seed_secondbyte], B
@@ -92,18 +73,13 @@
 :lib_rng_RELOC21 IFN [lib_rng_firstrun_flag], 1
 :lib_rng_RELOC22     JSR lib_rng_init
 :lib_rng_RELOC23 JSR lib_rng_generate_checksum
-    .shortform
     SET J, 0
     :lib_rng_generateloop1 ; First iteration, i = 0
-        .longform
 :lib_rng_RELOC24 SET X, lib_rng_buffer
-        .shortform
         ADD X, J
         SET C, [X] ; C := X[j], will use this value later.
         ADD X, 16 ; [X] := X[16 + j]
-        .longform
 :lib_rng_RELOC25 SET Y, lib_rng_seed_firstbyte
-        .shortform
         ADD Y, J ; [Y] := M[i*16 + j] where i = 0.
         SET [X], [Y]
         SET Z, [X] ; Z := X[16 + j], will use this value later too.
@@ -112,45 +88,33 @@
         SET [X], Z
         ADD J, 1
         IFN J, 16
-            .longform
 :lib_rng_RELOC26 SET PC, lib_rng_generateloop1
-            .shortform
     SET J, 0
     SET A, 0 ; A := t
     :lib_rng_generateloop15
         SET Z, 0 ; Z := k
         :lib_rng_generateloop15_inner
-            .longform
 :lib_rng_RELOC27 SET X, lib_rng_buffer
             ADD X, Z
 :lib_rng_RELOC28 SET I, lib_rng_s_table
-            .shortform
             ADD I, A
             XOR [X], [I]
             SET A, [X]
             ADD Z, 1
             IFN Z, 0x30
-                .longform
 :lib_rng_RELOC29 SET PC, lib_rng_generateloop15_inner
-                .shortform
             ADD A, J
             AND A, 0xff ; Fewer cycles than MOD A, 256
             ADD J, 1
             IFN J, 18
-                .longform
 :lib_rng_RELOC30 SET PC, lib_rng_generateloop15
-                .shortform
     SET J, 0
     :lib_rng_generateloop2 ; Second iteration of unrolled loop. i = 1.
-        .longform
 :lib_rng_RELOC31 SET X, lib_rng_buffer
-        .shortform
         ADD X, J
         SET C, [X]
         ADD X, 16
-        .longform
 :lib_rng_RELOC32 SET Y, lib_rng_seed_firstbyte
-        .shortform
         ADD Y, 16
         ADD Y, J ; [Y] := M[i*16 + j] where i = 1.
         SET [X], [Y]
@@ -160,48 +124,36 @@
         SET [X], Z
         ADD J, 1
         IFN J, 16
-            .longform
 :lib_rng_RELOC33 SET PC, lib_rng_generateloop2
-            .shortform
     SET J, 0
     SET A, 0 ; A := t
     :lib_rng_generateloop25
         SET Z, 0 ; Z := k
         :lib_rng_generateloop25_inner
-            .longform
 :lib_rng_RELOC34 SET X, lib_rng_buffer
             ADD X, Z
 :lib_rng_RELOC35 SET I, lib_rng_s_table
-            .shortform
             ADD I, A
             XOR [X], [I]
             SET A, [X]
             ADD Z, 1
             IFN Z, 0x30
-                .longform
 :lib_rng_RELOC36 SET PC, lib_rng_generateloop25_inner
-                .shortform
             ADD A, J
             AND A, 0xff ; Fewer cycles than MOD A, 256
             ADD J, 1
             IFN J, 18
-                .longform
 :lib_rng_RELOC37 SET PC, lib_rng_generateloop25
-                .shortform
     SET I, 0
     SET A, POP
     :lib_rng_generate_writeloop
-        .longform
 :lib_rng_RELOC38 SET X, lib_rng_buffer
-        .shortform
         ADD X, I
         SET C, A
         ADD C, I
         STI [C], [X]
         IFN I, 16
-            .longform
 :lib_rng_RELOC39 SET PC, lib_rng_generate_writeloop
-            .shortform
     SET PC, POP
 
 :lib_rng_firstrun_flag

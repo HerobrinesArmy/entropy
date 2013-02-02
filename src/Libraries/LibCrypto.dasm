@@ -21,9 +21,7 @@
     SET PUSH, X   ; instead of 1.
     SET PUSH, Y
     SET PUSH, Z
-    .longform
 :lib_crypto_RELOC1 JSR lib_crypto_apply
-    .shortform
     SET Z, POP
     SET Y, POP
     SET X, POP
@@ -37,9 +35,7 @@
 :lib_crypto_cleanup
     SET PUSH, I
     SET PUSH, J
-    .longform
 :lib_crypto_RELOC2 JSR lib_crypto_init
-    .shortform
     SET A, 0
     SET B, 0
     SET C, 0
@@ -53,34 +49,26 @@
 ; Initializes the state array.
 
 :lib_crypto_init
-    .longform
 :lib_crypto_RELOC3 SET I, lib_crypto_state
-    .shortform
     SET J, 0
     :lib_crypto_initloop
         STI [I], J
-        .longform
 :lib_crypto_RELOC4 IFN I, lib_crypto_end
 :lib_crypto_RELOC5 SET PC, lib_crypto_initloop
 :lib_crypto_RELOC6 SET [lib_crypto_firstrun_flag], 1 ; [label] comes after 1
-        .shortform                                   ; when assembled in
     SET PC, POP                                      ; longform.
 
 ; Sets up the state based on the key.
 ; A is the number of iterations and B is the location of the key in memory.
 
 :lib_crypto_shufflestate
-    .longform
 :lib_crypto_RELOC7 SET [lib_crypto_firstrun_flag], 0 ; Same as above.
-    .shortform
     SET J, 0
     :lib_crypto_shuffleloop_outer
         SET I, 0 ; Inner loop counter.
         :lib_crypto_shuffleloop
             SET C, B ; Key pointer.
-            .longform
 :lib_crypto_RELOC8 SET Y, lib_crypto_state ; State array pointer.
-            .shortform
             SET Z, Y ; Set Y and Z (array pointer) to beginning of array.
             ADD Y, I ; Move Y to ith position.
             ADD J, [Y]
@@ -93,14 +81,10 @@
             SET [Z], X ; Swap complete.
             ADD I, 1
             IFN I, 256
-            .longform
 :lib_crypto_RELOC9 SET PC, lib_crypto_shuffleloop
-            .shortform
             SUB A, 1
             IFN A, 0
-                .longform
 :lib_crypto_RELOC10 SET PC, lib_crypto_shuffleloop_outer
-                .shortform
             SET PC, POP
 
 ; Applies the algorithm with arguments passed from the wrapper subroutine.
@@ -110,10 +94,8 @@
     SET PUSH, B
     SET PUSH, C
     SET PUSH, I ; Store values on stack.
-    .longform
 :lib_crypto_RELOC11 IFN [lib_crypto_firstrun_flag], 1 ; Same as RELOC6.
 :lib_crypto_RELOC12     JSR lib_crypto_init
-    .shortform
     SET A, POP ; Set A to iterations.
     SET B, PICK 2 ; Set B to key location.
     JSR lib_crypto_shufflestate
@@ -125,9 +107,7 @@
     :lib_crypto_applyloop
         IFG B, C
             SET PC, POP ; Exits here.
-        .longform
 :lib_crypto_RELOC13 SET Y, lib_crypto_state ; State array pointer.
-        .shortform
         SET Z, Y ; Ditto.
         ADD I, 1
         AND I, 0xff ; Fewer cycles than MOD I, 256.
@@ -141,9 +121,7 @@
         AND X, 0xff ; Fewer cycles than MOD X, 256.
         XOR [B], X
         ADD B, 1
-        .longform
 :lib_crypto_RELOC14 SET PC, lib_crypto_applyloop
-        .shortform
 
 :lib_crypto_firstrun_flag
 DAT 0x01
