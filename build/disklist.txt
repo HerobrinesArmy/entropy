@@ -1,9 +1,5 @@
 file Kernel/init.bin.dasm
 dir lib
-file Libraries/Crypto.lib.dasm lib
-file Libraries/RNG.lib.dasm lib
-file Libraries/STDIO.lib.dasm lib
-file Libraries/Pixel.lib.dasm lib
 dir drv
 dir cfg
 dir klog
