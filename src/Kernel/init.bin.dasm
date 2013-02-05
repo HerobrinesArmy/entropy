@@ -4,11 +4,11 @@ hwn i
 :loop_a
 sub i, 1
 hwq i
-ife a, 0x7349
-ife b, 0xf615
+ife a, 0xf615
+ife b, 0x7349
 ife c, 0x1802
-ife x, 0x1c6c
-ife y, 0x8b36
+ife x, 0x8b36
+ife y, 0x1c6c
 add pc, 1
 sub pc, 14
 :found

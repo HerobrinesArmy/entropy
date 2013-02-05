@@ -82,7 +82,7 @@ ADD A, 19
 SET [B], A
 ADD B, 1
 SET [B], A
-ADD B, 0xD
+ADD B, 0xC
 ADD C, 1
 IFL C, 15
 	SET PC, pm_init_loop

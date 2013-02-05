@@ -1,5 +1,5 @@
 1 Generic Clock
-1 SPED-3
+0 SPED-3
 0 Suspension Chamber 2000
 2 M35FD Floppy drives
 1 LEM 1802 Screen
