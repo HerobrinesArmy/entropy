@@ -33,6 +33,9 @@ class diskfile:
     def setoffset(self, amount):
         self.fs = amount if self.len > 0 else 65535
 
+    def getfslist(self):
+        return [(self.fs, self.name.strip('\0') + '.' + self.ext.strip('\0'))]
+
 class diskdir:
     def __init__(self, diskname):
         self.name = (diskname + '\0' * 8)[:8]
@@ -42,6 +45,12 @@ class diskdir:
         self.fs = 0
         self.diskitems = []
         self.changed = True
+
+    def getfslist(self):
+        r = [(self.fs, self.name.strip('\0') + '.dir')]
+        for di in self.diskitems:
+            r.extend(di.getfslist())
+        return r
 
     def getdte(self):
         dte = []
@@ -165,8 +174,8 @@ if True:
         if not disklist:
             print('disklist.txt not found, no files were added.')
 
-        sizes = [len(x) for x in filedata]
-        ssizes = [((x - 1) >> 9) + 1 for x in sizes]
+        #sizes = [len(x) for x in filedata]
+        #ssizes = [((x - 1) >> 9) + 1 for x in sizes]
         rs = ((len(entropy.words) - 1) >> 9) + 1
         out = []
         out.append(0xc382)      #bootflag
@@ -212,6 +221,14 @@ if True:
                 else:
                     print('Could not interpret disklist entry: ', i)
             out.extend(root.getcontents2())
+            if True:
+                sl = []
+                sl.append((0, 'Entropy'))
+                sl.append((rs, 'FAT'))
+                sl += [(a + rs + 3, b) for a, b in root.getfslist()]
+                for i in sl:
+                    print('Sector' + format(i[0], '4') + ' contains: ' + i[1])
+                        
         if not entropy.writebin('../bin/entropy.img', out, not usebe):
             print('Could not access output file: ../bin/entropy.img')
         else:
