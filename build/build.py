@@ -174,8 +174,6 @@ if True:
         if not disklist:
             print('disklist.txt not found, no files were added.')
 
-        #sizes = [len(x) for x in filedata]
-        #ssizes = [((x - 1) >> 9) + 1 for x in sizes]
         rs = ((len(entropy.words) - 1) >> 9) + 1
         out = []
         out.append(0xc382)      #bootflag
@@ -226,8 +224,10 @@ if True:
                 sl.append((0, 'Entropy'))
                 sl.append((rs, 'FAT'))
                 sl += [(a + rs + 3, b) for a, b in root.getfslist()]
-                for i in sl:
-                    print('Sector' + format(i[0], '4') + ' contains: ' + i[1])
+                sl.append((len(out) // 512, 'empty'))
+                for i in range(len(sl) - 1):
+                    for j in range(sl[i][0], sl[i + 1][0]):
+                        print('Sector' + format(j, '4') + ' contains: ' + sl[i][1])
                         
         if not entropy.writebin('../bin/entropy.img', out, not usebe):
             print('Could not access output file: ../bin/entropy.img')
@@ -239,6 +239,3 @@ if True:
         raise
     nul = input('Press enter to continue...')
 
-
-
-            
