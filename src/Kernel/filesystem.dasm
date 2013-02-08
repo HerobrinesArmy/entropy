@@ -645,7 +645,98 @@ set j, pop
 set ex, pop
 set pc, pop 
 
+:fd_cd
+;  a - string of the dir you want to change to(obviously prepended with length)
+; [a + 1] is if you want to cd from the pwd first
+; uses ex to say that it didn't find the file(returns 404)
 
+set push, i
+set push, z
+set push, y
+set push, x
+set push, c
+set push, b
+set push, a
+set z, [a]; z should remain the string length
+set x, a; x contains the whole string
+ife [x + 1], 0x0001
+	set pc, .chkwd1st
+;Checking root first
+set b, 0x0
+:.chkdir
+add x, 2; add to to account for the header data on the string
+set a, 0x200
+jsr mm_request_memory
+ife a, 0xffff
+        sub pc, 1
+set c, a; c is the allocated memory
+set a, x ; a is now filename location
+jsr fd_find_file_dte
+ife a, 0xffff
+        set pc, .hndlerr002
+		
+set pc, .skipper
+
+:.chkdirloop
+jsr fd_find_file_dte
+ife a, 0xffff
+        set pc, .hndlerr002
+:.skipper
+set i, c
+set y, a                        	;Y is now the number of the dte in cluster							;A is now the cluster location of the dir we are searching.
+mul y, 0x10							;Multiplies to get to location of DTE
+add i, y                            ;I is now looking at the correct dte.
+add i, 0xE                          ;Location of cluster pointer in dte.
+set a, [i]							;A is the Cluster number of the directory we are jumping to
+set b, a
+add a, [fd_root_offset]
+jsr fd_load_sector
+add x, 6
+set a, x      ; reset A back to the string location
+sub z, 6
+ife z, 0x0
+   set pc, .end
+set pc, .chkdirloop
+
+:.chkwd1st
+;changes b to the cluster number of the current pwd.
+set a, 0xffff
+jsr fd_get_wd
+set b, a
+set b, 0xffff
+set pc, .chkdir
+
+:.end
+set a, b
+jsr fd_set_pwd
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+	sub pc, 1
+set a, pop
+set b, pop
+set c, pop
+set x, pop
+set y, pop
+set z, pop
+set i, pop
+set pc, pop
+:.hndlerr002
+set a, c
+jsr mm_free_memory
+ife a, 0xffff
+sub pc, 1 
+:.hndlerr001
+set a, pop
+set a, 0xffff
+set b, pop
+set c, pop
+set x, pop
+set y, pop
+set z, pop
+set i, pop
+set ex, 0x0404
+set pc, pop
 
 :fd_get_wd
 ; input a - prog id if 0xffff then use current pwd
