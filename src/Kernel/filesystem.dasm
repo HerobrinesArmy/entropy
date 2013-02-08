@@ -556,6 +556,7 @@ set pc, pop
 ; b - cluster number in which the DTE resides
 ; c - original value.
 set push, ex
+set push, z
 set push, j
 set push, i
 set push, y
@@ -572,11 +573,13 @@ set b, a
 set a, pop
 set i, a
 set j, c
-set y, 0x1
+set y, 0x0; interate twice over frist dte, 0*10=0
 set x, 0x1
- 
+set z, 0x0
+
+
 :.loop
-ife y, 0x21
+ife y, 0x20
       set pc, .load_next_sector_of_dir
 ifn [i],[j]
 	set pc, .looknextdte
@@ -593,10 +596,15 @@ set pc, .endusewd
  
 :.looknextdte
 set i, a ;put i back to the start
-set j, c 
-set x, y ;x is going to be reset anyway
+sub j, x
+add j, 5
+ifn z, 0x0
+   set [j], z
+set j, c
+set x, y 
 mul x, 0x10  
 add j, x
+set z, [j + 5]
 and [j + 5], 0xff00; endianess :/ doesn't work if it's 0x00ff and the disk is BE
 add y, 0x1
 set x, 0x1
@@ -615,6 +623,7 @@ set b, a
 jsr fd_load_sector
 set a, pop
 set y, 0x1
+set z, 0x0£
 set pc, .loop
  
 :.eod;(file not found in directory)
@@ -629,22 +638,26 @@ set a, 0xffff
 set c, pop
 set x, pop
 set y, pop
+set z, pop
 set i, pop
 set j, pop
 set ex, pop
 set pc, pop
 :.foundfile
+sub j, x
+set [j + 5], z
 set a, y
 sub a, 1 ;IMPORTANT :?
 sub b, [fd_root_offset]
 set c, pop
 set x, pop
 set y, pop
+set z, pop
 set i, pop
 set j, pop
 set ex, pop
 set pc, pop 
-
+q
 :fd_cd
 ;  a - string of the dir you want to change to(obviously prepended with length)
 ; [a + 1] is if you want to cd from the pwd first
