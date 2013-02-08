@@ -623,7 +623,7 @@ set b, a
 jsr fd_load_sector
 set a, pop
 set y, 0x1
-set z, 0x0£
+set z, 0x0
 set pc, .loop
  
 :.eod;(file not found in directory)
@@ -657,7 +657,7 @@ set i, pop
 set j, pop
 set ex, pop
 set pc, pop 
-q
+
 :fd_cd
 ;  a - string of the dir you want to change to(obviously prepended with length)
 ; [a + 1] is if you want to cd from the pwd first
