@@ -93,6 +93,7 @@ set pc, .loop_b
 set pc, pop
 
 :ut_fill_mem
+sub j, a
 add a, i
 set push, a
 sub a, 16
