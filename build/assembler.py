@@ -103,6 +103,33 @@ class assembler:
             i += 8
         return r
 
+    def listing(self):
+        lines = []
+        i = -1
+        while i < len(self.words) - 1:
+            i += 1
+            for l, n in list(self.labels.items()):
+                if n == i:
+                    lines.append(self.tohex(i) + '   label: :' + l)
+            line = self.tohex(i) + '  source: '
+            line += self.stripcomments(self.getline(self.wordinfo[i]))
+            #line = line.replace('\t', ' ')
+            if self.wordinfo[i - 1:i] != self.wordinfo[i:i + 1]:
+                if len(line) < 48:
+                    line += ' ' * (48 - len(line)) + 'data: '
+                    line += self.tohex(self.words[i])
+                    lines.append(line)
+                else:
+                    lines.append(line)
+                    lines.append(self.tohex(i) + '    data: ' + \
+                                 self.tohex(self.words[i]))
+            elif len(lines[-1]) < 72:
+                lines[-1] += ', ' + self.tohex(self.words[i])
+            else:
+                lines.append(self.tohex(i) + '    data: ' + \
+                             self.tohex(self.words[i]))
+        return lines
+
     def tohex(self, h, i = 4):
         return '0x' + '0' * (i - len(hex(h)) + 2) + hex(h)[2:]
 
@@ -958,13 +985,14 @@ class assembler:
 if __name__ == '__main__':
     dowait = True
     parser = optparse.OptionParser()
-    parser.add_option('-q', '--quiet', action = 'store_true',
-        help = "don't print errors, warnings or status messages")
-    parser.add_option('-b', '--bigendian', action = 'store_true',
-        help = "use big endian instead of little endian for output")
-    parser.add_option('-d', '--datfile', action = 'store_true',
-        help = "create a file with dat statements instead of a binary file")
-    #parser.add_option('-l', '--listing', help = "create a listing file")
+    parser.add_option('-q', '--quiet', action='store_true',
+        help="don't print errors, warnings or status messages")
+    parser.add_option('-b', '--bigendian', action='store_true',
+        help="use big endian instead of little endian for output")
+    parser.add_option('-d', '--datfile', action='store_true',
+        help="create a file with dat statements instead of a binary file")
+    parser.add_option('-l', '--listing', metavar='PATH',
+        help="write a listing file to PATH")
     options, args = parser.parse_args()
 
     if len(args) == 1:
@@ -980,19 +1008,28 @@ if __name__ == '__main__':
         outfile = args[1]
 
     a = assembler(infile, not options.quiet)
-    if a.success:
+    success = a.success
+    if success:
         if options.datfile:
             if a.writefile(outfile, a.datlines()):
                 print('Dat file stored in: ' + outfile)
             else:
                 print('Unable to access: ' + outfile)
+                success = False
         else:
             if a.writebin(outfile, a.words, not options.bigendian):
                 print('Binary stored in: ' + outfile)
             else:
                 print('Unable to access: ' + outfile)
+                success = False
+        if options.listing:
+            if a.writefile(options.listing, a.listing()):
+                print('Listing file stored in: ' + options.listing)
+            else:
+                print('Unable to access: ' + options.listing)
+                success = False
 
-    if dowait and a.success:
+    if dowait and success:
         input('Press enter to continue...')
 
 
