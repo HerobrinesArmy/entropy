@@ -75,9 +75,10 @@ set pc, pop
 ;B=words to grow,
 ;negative to shrink
 :mm_grow
-add b, [a+1]
-sub b, [a]
+add b, [a - 1]
+sub b, [a - 2]
 sub b, a
+sub b, 2
 ;continue in mm_resize
 
 ;A=location of section

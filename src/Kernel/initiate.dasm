@@ -11,6 +11,8 @@ set [fd_boot_drive], [0xffff] ;copy boot drive number set by bootloader
 :mm_init_a			;allocate all memory, including inits
 set [0x0000], 0
 set [0x0001], free_space_start
+set a, 0x100
+jsr mm_request
 
 
 
@@ -100,6 +102,8 @@ jsr ut_copy_mem
 ;DO NOT ALLOCATE MEMORY FROM HERE UNTIL END OF THIS FILE
 :mm_init_b			;deallocate initiators
 set a, free_space_start
+jsr mm_free
+set a, 0xff00
 jsr mm_free
 
 
