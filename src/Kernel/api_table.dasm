@@ -8,10 +8,10 @@
 
 :api_table
 ;dat function					;Offset
-.dat mm_request_memory			;0x02
-.dat mm_free_memory				;0x03
-.dat mm_grow_memory				;0x04
-.dat mm_shrink_memory			;0x05
+.dat mm_request					;0x02
+.dat mm_free					;0x03
+.dat mm_grow					;0x04
+.dat mm_resize					;0x05
 
 .dat cd_set_clock_handler		;0x06
 .dat cd_get_on_time				;0x07
@@ -24,7 +24,7 @@
 .dat pm_add_proc				;0x0c
 .dat pm_kill					;0x0d
 .dat pm_kill_me					;0x0e
-.dat pm_changePriority         ;0x0F
+.dat pm_changePriority			;0x0f
 
 .dat ut_pushr					;0x10
 .dat ut_popr					;0x11
@@ -38,10 +38,10 @@
 
 .dat fd_create_file				;0x18
 .dat fd_load_file				;0x19
-.dat fd_edit_file				;0x1A
+.dat fd_edit_file				;0x1a
 
-.dat ld_import_lib            ;0x1B
+.dat ld_import_lib				;0x1b
 
-.define api_table_length		 0x1A
+.define api_table_length		 0x1a
 
 :api_table_end

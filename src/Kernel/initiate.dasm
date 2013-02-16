@@ -5,7 +5,7 @@
 ;The labels are only used for clarity, they should never be called.
 
 :initiate_kernel
-
+set [fd_boot_drive], [0xffff] ;copy boot drive number set by bootloader
 
 
 :mm_init_a			;allocate all memory, including inits
@@ -16,7 +16,7 @@ set [0x0001], free_space_start
 
 :im_init			;initiate the interrupt manager
 hwn a
-jsr mm_request_memory
+jsr mm_request
 set [im_table_address], a
 ias im_interrupt_handler
 
@@ -27,7 +27,7 @@ set A, [fd_drive_cap]
 mul A, 0x2
 set push, A
 set B, A
-jsr mm_request_memory
+jsr mm_request
 set [fd_drive_table], A
 add peek, A
 hwn J
@@ -61,7 +61,7 @@ set [fd_root_offset], [0x08]
 add [fd_root_offset], [fd_FAT_number]
 jsr fd_load_FAT
 set A, 0x130
-jsr mm_request_memory
+jsr mm_request
 set [fd_file_table], A
 
 
@@ -77,7 +77,7 @@ ADD B, 0xB
 SET C, 0
 :pm_init_loop ;allocate stack for the processes
 SET A, 20
-JSR mm_request_memory
+JSR mm_request
 ADD A, 19
 SET [B], A
 ADD B, 1
@@ -100,7 +100,7 @@ jsr ut_copy_mem
 ;DO NOT ALLOCATE MEMORY FROM HERE UNTIL END OF THIS FILE
 :mm_init_b			;deallocate initiators
 set a, free_space_start
-jsr mm_free_memory
+jsr mm_free
 
 
 :cd_init			;initiate the clock, clock interrupts start after this

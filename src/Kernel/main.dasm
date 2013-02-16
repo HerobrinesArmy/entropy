@@ -1,5 +1,6 @@
 ;MAIN
 
+;This data is only used when the kernel is built using diskdata.dasm
 add pc, 15						;0x00		1	Boot flag, {add PC, 15} if bootable
 .dat 0x0000						;0x01		1	Filesystem descriptor
 .dat 0x456e, 0x7472, 0x6f70		;0x02		6	Media name
@@ -12,17 +13,15 @@ add pc, 15						;0x00		1	Boot flag, {add PC, 15} if bootable
 .dat 0x05f3, 0x375d
 ;FOR NOW, KERNEL IS EXPECTED TO BE NO LARGER THAN 0x1000 WORDS.
 
-set [fd_boot_drive], [0xffff]
 set pc, initiate_kernel
 
 ;main_end
-.define main_end				21		;UPDATE TO MATCH
+.define main_end				18		;UPDATE TO MATCH
 .define reserved_sector_num		8
 
-.reserve 0x0018 - 21 + 2			;api_table_length - main_end + 2
+.reserve api_table_length - main_end + 2
 
 ;INCLUDES
-
 #include "defines.dasm"
 #include "mem_manager.dasm"
 #include "multitasker.dasm"
@@ -38,4 +37,3 @@ set pc, initiate_kernel
 #include "api_table.dasm"
 :end_of_kernel
 
-;#include "disk_data.dasm"

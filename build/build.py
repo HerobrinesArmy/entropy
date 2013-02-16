@@ -164,6 +164,8 @@ if True:
         entropy = assembler('../src/Kernel/main.dasm', True)
         if not entropy.success:
             print('Entropy main file missing!')
+            print('\n====== BUILD FAILED ======\n')
+            nul = input('Press enter to continue...')
             exit()
         diskdata = assembler('../src/Kernel/disk_data.dasm', True)
         if not diskdata.success:
@@ -231,6 +233,8 @@ if True:
                         
         if not entropy.writebin('../bin/entropy.img', out, not usebe):
             print('Could not access output file: ../bin/entropy.img')
+            print('\n====== BUILD FAILED ======\n')
+            nul = input('Press enter to continue...')
         else:
             print('\n====== BUILD SUCCESS ======\n')
     except:

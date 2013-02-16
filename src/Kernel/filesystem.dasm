@@ -94,7 +94,7 @@ set push, C
 set A, [fd_FAT_number]
 set B, A
 shl A, 9
-jsr mm_request_memory
+jsr mm_request
 set C, A
 set [fd_FAT], C
 set A, [fd_FAT_offset]
@@ -140,7 +140,7 @@ ife [fd_FAT], 0x0
 	set pc, pop
 set push, A
 set A, [fd_FAT]
-jsr mm_free_memory
+jsr mm_free
 set [fd_FAT], 0x0
 set A, pop
 set pc, pop
@@ -322,7 +322,7 @@ set push, Y
 set push, A
 jsr fd_get_file_length
 mul A, 0x200
-jsr mm_request_memory
+jsr mm_request
 ife a, 0x0	;error detection
     set pc, fd_load_file_pop_return_error
 set X, A
@@ -421,7 +421,7 @@ add B, 0x10
 set [B], [current_process]
 add B, 0x1
 set A, 0x200
-jsr mm_request_memory
+jsr mm_request
 set [B], A
 set A, pop
 set C, pop
@@ -436,7 +436,7 @@ jsr fd_find_file_dte
 set push, X
 set push, A
 set A, 0x200
-jsr mm_request_memory
+jsr mm_request
 set X, A
 set C, X
 set A, B
@@ -463,7 +463,7 @@ set A, B
 set C, X
 jsr fd_write_sector
 set A, X
-jsr mm_free_memory
+jsr mm_free
 set X, pop
 set pc, pop
 
@@ -535,7 +535,7 @@ add A, 0x11
 set B, A
 set A, [B]
 ifn A, 0x0
-	jsr mm_free_memory
+	jsr mm_free
 sub B, 0x11
 set A, B
 set C, 0x13
@@ -679,7 +679,7 @@ set b, 0x0
 :.chkdir
 add x, 2; add to to account for the header data on the string
 set a, 0x200
-jsr mm_request_memory
+jsr mm_request
 ife a, 0xffff
         sub pc, 1
 set c, a; c is the allocated memory
@@ -723,7 +723,7 @@ set pc, .chkdir
 set a, b
 jsr fd_set_pwd
 set a, c
-jsr mm_free_memory
+jsr mm_free
 ife a, 0xffff
 	sub pc, 1
 set a, pop
@@ -736,7 +736,7 @@ set i, pop
 set pc, pop
 :.hndlerr002
 set a, c
-jsr mm_free_memory
+jsr mm_free
 ife a, 0xffff
 sub pc, 1 
 :.hndlerr001

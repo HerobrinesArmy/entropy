@@ -1,51 +1,61 @@
 ;MEMORY MANAGER by Lucus
+;Implements dynamic,
+;resizable memory.
 
-;Implements paged memory, pages are always 512 words each.
+;Section header:
+;0x0 free space after this
+;0x1 location of next section
 
-;For documentation, see the Entropy Scope doc, see issue 7 to find it.
+;Expects user to call pm_lock
 
-;NOTE: THIS CODE WORKS BUT HAS NOT BEEN MADE SAFE FOR PREEMPTION YET.
-
-:mm_request_memory
+;A=number of words
+;return A=section location or
+;-1 if out of space
+:mm_request
 set push, b
 set push, c
-add a, 1
+;find space
+add a, 1 ;account for header
 set b, 0
 :.loop_a
 ifg [b], a
 set pc, .found_space
-set b, [b+1]
-ifn b, 0xffff
+set b, [b + 1]
+ifn b, -1
 set pc, .loop_a
-;no_space
-set a, 0xffff
+;no space
+set a, -1
 set c, pop
 set b, pop
 set pc, pop
-:.found_space ;b=start of section header
+:.found_space
+;B=start of section header
+add a, 1
 set c, [b]
 sub c, a
-sub c, 1
-set a, [b+1]
-sub a, [b]
-set [b], 0
-set [a+1], [b+1]
-set [b+1], a
-set [a], c
-add a, 2
+;C=new free space
+mul a, -1
+add a, [b + 1]
+;A=new header location
+set [b], c
+set [a + 1], [b + 1]
+set [b + 1], a
+set [a], 0
+add a, 2 ;account for header
 set c, pop
 set b, pop
 set pc, pop
 
-
-:mm_free_memory
+;A=location of section
+;return A=success or errno
+:mm_free
 set push, b
 sub a, 2
 set b, 0
 :.loop_a
-ife [b+1], a
+ife [b + 1], a
 set pc, .found_it
-set b, [b+1]
+set b, [b + 1]
 ifn b, -1
 set pc, .loop_a
 ;section does not exist
@@ -53,36 +63,42 @@ set a, err_does_not_exist
 set b, pop
 set pc, pop
 :.found_it
-add [b], [a+1]
-sub [b], [b+1]
-set [b+1], [a+1]
-set a, 0
+;B=section before target
+add [b], [a + 1]
+sub [b], a
+set [b + 1], [a + 1]
+set a, 0 ;success
 set b, pop
 set pc, pop
 
-:mm_grow_memory
+;A=location of section
+;B=words to grow,
+;negative to shrink
+:mm_grow
+add b, [a+1]
+sub b, [a]
+sub b, a
+;continue in mm_resize
+
+;A=location of section
+;B=target size
+;return A=success or errno
+:mm_resize
+set push, c
 sub a, 2
-ifg b, [a]
+add b, 2
+set c, [a + 1]
+sub c, a
+ifg b, c
 set pc, .no_space
-sub [a], b
+sub c, b
+;C=new free space
+set [a], c
+set a, 0 ;success
+set c, pop
 set pc, pop
 :.no_space
 set a, err_out_of_space
+set c, pop
 set pc, pop
 
-:mm_shrink_memory
-set push, c
-sub a, 2
-set c, [a+1]
-sub c, a
-sub c, [a]
-sub c, 3
-ifg b, c
-set pc, .none_left
-add [a], b
-set c, pop
-set pc, pop
-:.none_left
-set a, err_underflow
-set c, pop
-set pc, pop
