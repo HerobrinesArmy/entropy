@@ -113,7 +113,7 @@ class assembler:
                     lines.append(self.tohex(i) + '   label: :' + l)
             line = self.tohex(i) + '  source: '
             line += self.stripcomments(self.getline(self.wordinfo[i]))
-            #line = line.replace('\t', ' ')
+            line = line.replace('\t', ' ')
             if self.wordinfo[i - 1:i] != self.wordinfo[i:i + 1]:
                 if len(line) < 48:
                     line += ' ' * (48 - len(line)) + 'data: '
