@@ -72,8 +72,13 @@ set b, pop
 set pc, pop
 
 ;A=location of section
-;B=words to grow,
-;negative to shrink
+;B=words to shrink
+:mm_shrink
+mul b, -1
+;continue in mm_grow
+
+;A=location of section
+;B=words to grow
 :mm_grow
 add b, [a - 1]
 sub b, [a - 2]
