@@ -382,7 +382,7 @@ class assembler:
             if a: m = re.match(r'sp\s*\+\+\Z', arg)
             else: m = re.match(r'--\s*sp\Z', arg)
             if m: return (24,)
-            m = re.match(r'\[[ \t]*sp[ \t]*([+-])(.*)\]', arg)
+            m = re.match(r'\s*sp\s*([+-])(.*)', arg)
             if m:
                 tmp = self.parse(m.group(2))
                 if tmp == None: return 1
