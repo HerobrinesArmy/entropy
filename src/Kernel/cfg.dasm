@@ -1,3 +1,8 @@
+;CONFIGURATION by Lucus
+
+.define max_proc_num_pwr	6	;max 1<<6=64 processes
+.define kernel_log_size     64  ;max 64 log entries in kernel
+.define default_speed       6   ;6 ticks per switch
 
 ;ERROR NUMBERS
 
@@ -14,3 +19,4 @@
 .define err_self				0x0b
 
 .define err_fatal				0xffff
+

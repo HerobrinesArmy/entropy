@@ -1,0 +1,62 @@
+;KERNEL LOGGER by Lucus
+
+;Push a word onto the kernel log stack
+;A is word to push
+;Return: A is success or errno
+:kl_push
+add [pm_semaphore], 1
+ifl [kl_pos], kl_log + 1
+set pc, .no_space
+sub [kl_pos], 1
+set push, a
+set a, [kl_pos]
+set [a], pop
+set a, 0
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+:.no_space
+set a, err_out_of_space
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+;Pop a word from the kernel log stack
+;Return: A is word popped or 0 if stack is empty
+:kl_pop
+add [pm_semaphore], 1
+ifg [kl_pos], kl_log + kernel_log_size - 1
+set pc, .empty
+set a, [kl_pos]
+set a, [a]
+add [kl_pos], 1
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+:.empty
+set a, 0
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+;Get several words of the log in a specific location
+;A is the number of words requested
+;B is the location to put them in
+;Return: A is the number of words returned
+;Return: B is the same as at the start
+:kl_get
+add [pm_semaphore], 1
+set push, i
+set push, j
+set push, b
+set b, kl_log
+sub b, [kl_pos]
+ifg a, b
+set a, b
+set push, a
+set j, peek
+set i, [kl_pos]
+jsr ut_copy_mem
+set a, pop
+add [kl_pos], a
+set b, pop
+set j, pop
+set i, pop
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+;DATA
+:kl_pos      .dat kl_log + kernel_log_size
+:kl_log      .reserve kernel_log_size
+

@@ -1,0 +1,90 @@
+;INITIATE KERNEL by Lucus
+
+;This initiator is the first process
+
+;For the memory manager, section info:
+.dat init_stack - 2, 0 ;last section
+
+:init
+set sp, init_stack_end
+
+:im_init
+hwn a
+jsr mm_request
+ife a, -1
+jsr fatal_error ;Does not return
+set [im_table_address], a
+ias im_interrupt_handler
+
+:pm_init
+;nothing to do here
+
+:api_init
+set a, api_table_length
+set i, api_table
+set j, 0
+jsr ut_copy_mem
+
+:cd_init			;initiate the clock, clock interrupts start after this
+hwn i
+sub i, 1
+:.loop_a
+ife i, -1
+set pc, .no_clock
+hwq i
+ife a, 0xb402
+ife b, 0x12d0
+ife c, 0x0001
+ife x, 0x0000
+ife y, 0x0000
+set pc, .found_clock
+std pc, .loop_a
+:.no_clock
+set [cd_clock_id], -1
+jsr fatal_error
+:.found_clock
+set [cd_clock_id], i
+set a, i
+set b, cd_interrupt_handler
+jsr im_request
+set b, i
+add b, im_hardware_flag
+set a, 2
+hwi i
+set a, 0
+set b, 1
+hwi i
+
+set a, 1
+jsr pm_add ;Won't work, unimplemented
+
+sub pc, 1
+
+:fatal_error
+set a, 0xffff
+set b, a
+set c, b
+set x, c
+set y, x
+set z, y
+set i, 0
+set j, 0
+add j, 1
+add i, ex
+sub pc, 3
+
+;DATA
+:api_table
+.include "api.dasm"
+
+:init_end
+
+;For the memory manager, section info:
+.dat 0xffff, -init_stack_end ;last section
+
+:init_stack
+
+.reserve 64
+
+:init_stack_end
+

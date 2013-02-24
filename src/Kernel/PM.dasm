@@ -1,0 +1,323 @@
+;PROCESS MANAGER by Lucus
+
+:pm_int_handler
+sub [pm_til_next], 1
+sub [pm_til_next], ex ;pm_til_next stays 0 if it is 0
+;continue in pm_check_time
+
+;Check the time and switch if necessary
+;DESTROYS: A
+;Assumes to be in interrupt queuing mode
+:pm_check_time
+ife [pm_til_next], 0
+ife [pm_semaphore], 0
+add pc, 1
+set pc, pop
+;Time to switch
+set a, [pm_hurry_queue]
+ife a, -1
+set pc, .round_robin
+set push, a
+set push, i
+set push, j
+set a, 15
+set i, pm_hurry_queue + 1
+set j, pm_hurry_queue
+jsr ut_copy_mem
+set [j], -1
+set j, pop
+set i, pop
+set a, pop
+set pc, pm_switch
+:.round_robin
+set a, [current_process]
+set push, b
+set push, c
+:.check_next
+add a, 1
+and a, max_proc_num - 1
+set b, a
+shl b, 2
+ife c, a ;Check if we're round
+jsr pm_handle_ints ;If we are, let some interrupts through to see if they unblock a process
+ifc [b + pm_flags], pm_blocked
+ifb [b + pm_flags], pm_hasproc
+add pc, 1
+set pc, .check_next
+;Process A exists and is not blocked
+set c, pop
+set b, pop
+;continue in pm_switch
+
+;Assumes to be in interrupt queuing mode and that [pm_semaphore] is 0
+;Assumes A was saved in the stack before
+;Arguments: A = process to switch to
+:pm_switch
+set push, b
+set push, c
+set push, x
+set push, y
+set push, z
+set push, i
+set push, j
+set b, [current_process]
+shl b, 2
+set [b + pm_sp], sp
+set [pm_til_next], [pm_speed]
+set [current_process], a
+shl a, 2
+set sp, [a + pm_sp]
+set j, pop
+set i, pop
+set z, pop
+set y, pop
+set x, pop
+set c, pop
+set b, pop
+set pc, pop
+
+;Handle interrupts, let interrupt queuing turn off for a moment and then back on
+:pm_handle_ints
+add [pm_semaphore], 1
+iaq 0
+set a, a ;NOP
+set a, a ;NOP
+set a, a ;NOP
+set a, a ;NOP
+iaq 1
+sub [pm_semaphore], 1
+set pc, pop
+
+;End a semaphore session, reducing the semaphore by 1 and checking the time if it's 0
+:pm_unlock
+sub [pm_semaphore], 1
+ifn [pm_semaphore], 0
+set pc, pop
+iaq 1
+set push, a
+set pc, pm_check_time
+
+;To be implemented.
+:pm_add
+add [pm_semaphore], 1
+
+
+set pc, pm_unlock ;Short for:
+;jsr pm_unlock
+;set pc, pop
+
+;Kill the current process, do not call inside an interrupt/signal handler
+:pm_kill_me
+iaq 1
+ife [pm_semaphore], 0
+add pc, 3
+iaq 0
+set a, err_semaphore
+set pc, pop ;Can't run if semaphore not 0 because it can't schedule
+set a, [current_process]
+shl a, 2
+set [a + pm_flags], 0
+set b, a
+set a, [a + pm_location]
+jsr mm_free
+set a, [b + pm_stack_loc]
+jsr mm_free
+set pc, pm_check_time
+;Should never return
+
+;Arguments: A = process to kill
+;Return: A = 0 or errno
+:pm_kill
+add [pm_semaphore], 1
+ifn a, [current_process]
+add pc, 4
+set a, err_self
+sub [pm_semaphore], 1
+set pc, pop ;Can't kill self with pm_kill, use pm_kill_me instead
+shl a, 2
+set [a + pm_flags], 0
+set push, a
+set a, [a + pm_location]
+jsr mm_free
+set a, pop
+set a, [a + pm_stack_loc]
+jsr mm_free
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+:pm_unblock_me
+set push, a
+set a, [current_process]
+shl a, 2
+add a, pm_flags
+and [a + pm_flags], -1 - pm_blocked
+set a, pop
+set pc, pop
+
+:pm_block_me
+iaq 1
+ife [pm_semaphore], 0
+add pc, 3
+iaq 0
+set a, err_semaphore
+set pc, pop ;Can't run if semaphore not 0 because it can't schedule
+set push, a
+set a, [current_process]
+shl a, 2
+bor [a + pm_flags], pm_blocked
+jsr pm_check_time
+:pm_rfi	;Used for new processes, the stack makes the PC pop to here
+		;This label has nothing to do with this function
+rfi 0 ;Short for:
+;iaq 0
+;set a, pop
+;set pc, pop
+
+;Return:	A = child PID for parent, -1 for child
+;			B = -1, parent PID for child
+;			C = 0 or errno
+:pm_thread
+add [pm_semaphore], 1
+set push, y
+set push, i
+;Find space
+set y, pm_flags - 4
+:.loop_a
+ife y, pm_flags + max_proc_num * 4 - 4
+set pc, .no_space
+add y, 4
+ifn [y], 0
+set pc, .loop_a
+sub y, pm_flags
+;Y is now the place we can put the thread
+;Allocate stack
+set b, [current_process]
+shl b, 2
+set c, [b + pm_stack_loc]
+set a, [c - 1]
+sub a, c
+sub a, [c - 2]
+set c, a
+;A is the length of the stack
+jsr mm_request
+ife a, -1
+set pc, .no_space
+set [y + pm_stack_loc], a
+set [y + pm_flags], pm_hasproc
+set [y + pm_location], [b + pm_location]
+add a, c
+sub a, 10 ;Make 9 pops when switching to this thread
+set [y + pm_sp], a
+set i, a
+sti [i], j ;J
+sti [i], [sp] ;I
+sti [i], z ;Z
+sti [i], [sp + 1] ;Y
+sti [i], x ;X
+sti [i], 0 ;C
+sti [i], [current_process] ;B
+sti [i], pm_rfi
+sti [i], -1 ;A
+sti [i], [sp + 2] ;[sp + Number of pushes since start of this function]
+sub j, 10 ;
+;Stack and table are set up, set return values
+shr y, 2 ;Y is now the child PID
+set a, y
+set b, -1
+set c, 0
+jsr pm_unlock
+set i, pop
+set y, pop
+set pc, pop
+:.no_space
+;Filled with processes already
+set a, 0
+set b, -1
+set c, err_out_of_space
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+;Set process A for hurrying, placing it in the hurry queue
+;This unblocks the process and switches to it immediately if the queue was empty
+:pm_hurry
+add [pm_semaphore], 1
+set push, b
+set [pm_til_next], 0
+set b, pm_hurry_queue
+ifn [b], -1
+sub pc, 2
+ifl b, pm_hurry_queue + 16
+set [b], a
+shl a, 2
+and [a + pm_flags], -1 - pm_blocked
+set b, pop
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+
+;Set process A for urgency, placing it at the top of the hurry queue
+;This unblocks the process and switches to it immediately if possible
+:pm_urgent
+set push, i
+set push, j
+add [pm_semaphore], 1
+set i, pm_hurry_queue + 15
+set j, pm_hurry_queue + 16
+std [j], [i]
+std [j], [i]
+std [j], [i]
+std [j], [i]
+std [j], [i] ;
+std [j], [i] ;
+std [j], [i] ;
+std [j], [i] ;
+std [j], [i]
+std [j], [i]
+std [j], [i]
+std [j], [i]
+std [j], [i] ;
+std [j], [i] ;
+std [j], [i] ;
+set [j], a
+set j, pop
+set i, pop
+shl a, 2
+and [a + pm_flags], -1 - pm_blocked
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+;Get the switching speed in ticks per switch in A
+:pm_get_speed
+set a, [pm_speed]
+set pc, pop
+
+;Set the switching speed in ticks per switch to A
+:pm_set_speed
+set [pm_speed], a
+set pc, pop
+
+;Get the PID of the current process in A
+:pm_get_pid
+set a, [current_process]
+set pc, pop
+
+;DATA
+:current_process		.dat 0
+:pm_speed				.dat default_speed  ;ticks per switch
+:pm_til_next			.dat default_speed  ;ticks until switch
+:pm_semaphore			.dat 1		        ;semaphore word
+
+:pm_hurry_queue			;max 16 procs in hurry queue
+						;Head is at the lowest address and has the highest priority
+.dat -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+
+:pm_proc_table			.dat 0
+						.dat init - 2
+						.dat init_stack - 2
+						.dat 0x0001	;Has process
+						.reserve max_proc_num * 4 - 4
+
+.define pm_sp			pm_proc_table		;Stack pointer
+.define pm_location		pm_proc_table + 1	;Location of main memory section
+.define pm_stack_loc	pm_proc_table + 2	;Location of stack memory section
+.define pm_flags		pm_proc_table + 3	;Flags:
+.define pm_hasproc		0x1				;Has process
+.define pm_blocked		0x2				;Is blocked
+.define max_proc_num	1 << max_proc_num_pwr
+

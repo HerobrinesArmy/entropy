@@ -1,0 +1,151 @@
+;MEMORY MANAGER by Lucus
+;Implements dynamic,
+;resizable memory.
+
+;Section header:
+;0x0 location of next section
+;0x1 free space after this
+
+;if A is section location
+;then the size of it is
+;[A] - A - [A + 1]
+
+.define mm_first_section \
+            end_of_kernel
+;The first section is directly
+;after the end of the kernel
+
+;A=number of words
+;return A=section location or
+;-1 if out of space
+:mm_request
+add [pm_semaphore], 1
+set push, b
+set push, c
+;find space
+add a, 1 ;account for header
+set b, mm_first_section
+:.loop_a
+ifg [b + 1], a
+set pc, .found_space
+set b, [b]
+ifn b, -1
+set pc, .loop_a
+;no space
+set a, -1
+set c, pop
+set b, pop
+set pc, pm_unlock ;Short for:
+;JSR label; SET PC, POP
+:.found_space
+;B=start of section header
+add a, 1
+add [mm_used], a
+set c, [b + 1]
+sub c, a
+;C=new free space
+mul a, -1
+add a, [b]
+;A=new header location
+set [b + 1], c
+set [a], [b]
+set [b], a
+set [a + 1], 0
+add [mm_section_count_], 1
+add a, 2 ;account for header
+set c, pop
+set b, pop
+set pc, pm_unlock ;Short for:
+;JSR label; SET PC, POP
+
+;A=location of section
+;return A=success or errno
+:mm_free
+add [pm_semaphore], 1
+set push, b
+sub a, 2
+set b, mm_first_section
+:.loop_a
+ife [b], a
+set pc, .found_it
+set b, [b]
+ifn b, -1
+set pc, .loop_a
+;section does not exist
+set a, err_does_not_exist
+set b, pop
+set pc, pm_unlock ;Short for:
+;JSR label; SET PC, POP
+:.found_it
+;B=section before target
+set push, [a]
+sub peek, a
+sub peek, [a + 1]
+sub [mm_used], pop
+add [b + 1], [a]
+sub [b + 1], a
+set [b], [a]
+sub [mm_section_count_], 1
+set a, 0 ;success
+set b, pop
+set pc, pm_unlock ;Short for:
+;JSR label; SET PC, POP
+
+;A=location of section
+;B=words to shrink
+:mm_shrink
+mul b, -1
+;continue in mm_grow
+
+;A=location of section
+;B=words to grow
+:mm_grow
+add [pm_semaphore], 1
+add b, [a - 2]
+sub b, [a - 1]
+sub b, a
+sub b, 2
+add pc, 2 ;Skip over semaphore
+;setter, that's done already
+;continue in mm_resize
+
+;A=location of section
+;B=target size
+;return A=success or errno
+:mm_resize
+add [pm_semaphore], 1
+set push, c
+sub a, 2
+add b, 2
+set c, [a]
+sub c, a
+ifg b, c
+set pc, .no_space
+sub c, b
+;C=new free space
+set push, c
+sub peek, [a + 1]
+sub [mm_used], peek
+set [a + 1], c
+set a, 0 ;success
+set c, pop
+set pc, pm_unlock ;Short for:
+;JSR label; SET PC, POP
+:.no_space
+set a, err_out_of_space
+set c, pop
+set pc, pm_unlock ;Short for:
+;JSR label; SET PC, POP
+
+:mm_get_usage
+set a, [mm_used]
+set pc, pop
+
+:mm_section_count
+set a, [mm_section_count_]
+set pc, pop
+
+;DATA
+:mm_used .dat init_stack_end
+:mm_section_count_ .dat 2
+

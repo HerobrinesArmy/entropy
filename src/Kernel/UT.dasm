@@ -1,8 +1,5 @@
 ;UTILITIES by Lucus
 
-;This code may seem weird, but it should work and should be safe,
-;even when the process is preempted in the middle of executing this.
-
 :ut_pushr
 set ex, pop
 set push, a
@@ -56,13 +53,13 @@ xor peek, ex	;
 xor ex, peek	;
 set pc, pop
 
+;Copy A words of memory from I to J
 :ut_copy_mem
-add a, i
 set push, a
-sub a, 16
-ifg i, a
-set pc, .next
-add a, 1
+add a, i
+mul peek, -1
+and peek, 15
+add pc, pop
 :.loop_a
 sti [j], [i]
 sti [j], [i]
@@ -80,26 +77,17 @@ sti [j], [i] ;
 sti [j], [i] ;
 sti [j], [i] ;
 sti [j], [i] ;
-ifg a, i
-set pc, .loop_a
-:.next
-set a, pop
-ife i, a
-set pc, pop
-:.loop_b
-sti [j], [i]
-ifn i, a
-set pc, .loop_b
+ifl i, a
+sub pc, 18
 set pc, pop
 
+;Fill A words of memory starting at I with B
 :ut_fill_mem
-sub j, a
-add a, i
 set push, a
-sub a, 16
-ifg i, a
-set pc, .next
-add a, 1
+add a, i
+mul peek, -1
+and peek, 15
+add pc, pop
 :.loop_a
 sti [i], b
 sti [i], b
@@ -117,14 +105,44 @@ sti [i], b ;
 sti [i], b ;
 sti [i], b ;
 sti [i], b ;
-ifg a, i
-set pc, .loop_a
-:.next
+ifl i, a
+sub pc, 18
+set pc, pop
+
+;Compare A words of memory starting at I and J
+;Returns A is 0 if [I] through [I + A - 1] equals [J] through [J + A - 1]
+;Returns A is 1 if the memory at I is bigger than the memory at J as a Big Endian BigInt
+;Returns A is -1 if the memory at J is bigger than the memory at I as a Big Endian BigInt
+:ut_compare_mem_be
+add a, i
+:.loop_a
+ife [i], [j]
+ifl i, a
+sti pc, .loop_a
+set a, 0
+ifg [i], [j]
+set a, 1
+ifg [j], [i]
+set a, -1
+set pc, pop
+
+;Compare A words of memory starting at I and J
+;Returns A is 0 if [I] through [I + A - 1] equals [J] through [J + A - 1]
+;Returns A is 1 if the memory at I is bigger than the memory at J as a Little Endian BigInt
+;Returns A is -1 if the memory at J is bigger than the memory at I as a Little Endian BigInt
+:ut_compare_mem_le
+set push, i
+add i, a
+add j, a
 set a, pop
-ife i, a
+:.loop_a
+ife [i], [j]
+ifg i, a
+std pc, .loop_a
+set a, 0
+ifg [i], [j]
+set a, 1
+ifg [j], [i]
+set a, -1
 set pc, pop
-:.loop_b
-sti [i], b
-ifn i, a
-set pc, .loop_b
-set pc, pop
+

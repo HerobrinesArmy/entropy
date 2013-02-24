@@ -1,39 +1,40 @@
-;MAIN
+;MAIN by Lucus
 
-;This data is only used when the kernel is built using diskdata.dasm
-add pc, 15						;0x00		1	Boot flag, {add PC, 15} if bootable
-.dat 0x0000						;0x01		1	Filesystem descriptor
-.dat 0x456e, 0x7472, 0x6f70		;0x02		6	Media name
-.dat 0x7920, 0x4c69, 0x7665
-.dat reserved_sector_num		;0x08		1	Number of reserved sectors
-.dat 0x0001						;0x09		1	Number of FAT tables (usually 1)
-.dat 0x0200						;0x0A		1	Number of words per sector (usually 512)
-.dat 0x05a0						;0x0B 		1	Number of sectors on disk (usually 1440 for a fdc)
-.dat 0x7ddf, 0x40a4				;0x0C		4	Serial number of media, generated on formatting
-.dat 0x05f3, 0x375d
-;FOR NOW, KERNEL IS EXPECTED TO BE NO LARGER THAN 0x1000 WORDS.
+.reserve 16
+set pc, init
+.reserve api_table_length - 18
 
-set pc, initiate_kernel
+.include "cfg.dasm"
+.include "MM.dasm"
+.include "KL.dasm"
+.include "UT.dasm"
+.include "IM.dasm"
+.include "SM.dasm"
+.include "CD.dasm"
+.include "PM.dasm"
+.include "FD.dasm"
+.include "LM.dasm"
 
-;main_end
-.define main_end				18		;UPDATE TO MATCH
-.define reserved_sector_num		8
-
-.reserve api_table_length - main_end + 2
-
-;INCLUDES
-#include "defines.dasm"
-#include "mem_manager.dasm"
-#include "multitasker.dasm"
-#include "int_manager.dasm"
-#include "utilities.dasm"
-#include "filesystem.dasm"
-#include "clock_driver.dasm"
-#include "sig_manager.dasm"
-#include "lib_loader.dasm"
-:free_space_start
-.dat 0xffff - end_of_kernel, 0xffff		;needed for memory manager.
-#include "initiate.dasm"	;move all initiators here
-#include "api_table.dasm"
 :end_of_kernel
+
+;First memory section header
+.dat init - 2, 0
+
+.include "init.dasm"
+;include "api.dasm"     ;Imported in init.dasm
+
+
+
+;KERNEL COMMENTS
+;MODULE [DONE] [TESTED] - Comments
+;MM DONE - TODO: Add counters
+;KL DONE
+;UT DONE
+;IM DONE
+;SM DONE
+;CD DONE
+;PM
+;FD
+;LM
+;init
 

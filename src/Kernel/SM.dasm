@@ -1,0 +1,24 @@
+;SIGNAL MANAGER by Lucus
+
+;This is a really tiny implementation of a signal handler.
+
+:sm_send
+add [pm_semaphore], 1
+ife [a + sm_signal_handlers], 0
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+set push, [current_process]
+set [current_process], a
+jsr [a + sm_signal_handlers]
+set [current_process], pop
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+
+
+:sm_set_handler
+set push, a
+set a, [current_process]
+set [a + sm_signal_handlers], pop
+set pc, pop
+
+;DATA
+:sm_signal_handlers		.reserve max_proc_num
+

@@ -1,43 +1,46 @@
 ;CLOCK DRIVER by Lucus
 
-.define tick_length 1	;in 1/60 seconds, 60 must be divisible by it.
-.define clock_interrupt_num 17
+;Ontime is A * 65536 + B in ticks
+;Systime is A * 65536 + B in seconds
 
 :cd_interrupt_handler
-add [cd_on_time+1], tick_length
-ife ex, 1
-add [cd_on_time], 1
+add [cd_on_time + 1], 1
+add [cd_on_time], ex
 add [cd_second_counter], 1
-ifn [cd_second_counter], 60/tick_length
+ifn [cd_second_counter], 60
 set pc, no_second_passed
 set [cd_second_counter], 0
-add [cd_sys_time+1], 1
-ife ex, 1
-add [cd_sys_time], 1
+add [cd_sys_time + 1], 1
+add [cd_sys_time], ex
 :no_second_passed
 ifn [cd_clock_handler], 0
 jsr [cd_clock_handler]
-jsr multitasker_Interrupt				;Add multitasker function that should be called every tick here.
-;commented this out because multitasker_Interrupt is crashing the system
+jsr pm_int_handler
 set pc, pop
 
-:cd_set_clock_handler
+:cd_set_handler
 set [cd_clock_handler], a
 set pc, pop
 
 :cd_get_on_time
+iaq 1
 set a, [cd_on_time]
-set b, [cd_on_time+1]
+set b, [cd_on_time + 1]
+iaq 0
 set pc, pop
 
 :cd_get_sys_time
+iaq 1
 set a, [cd_sys_time]
-set b, [cd_sys_time+1]
+set b, [cd_sys_time + 1]
+iaq 0
 set pc, pop
 
 :cd_set_sys_time
+iaq 1
 set [cd_sys_time], a
-set [cd_sys_time+1], b
+set [cd_sys_time + 1], b
+iaq 0
 set pc, pop
 
 ;DATA
@@ -46,3 +49,4 @@ set pc, pop
 :cd_sys_time		.dat 0x0000, 0x0000
 :cd_clock_id		.dat 0x0000
 :cd_clock_handler	.dat 0x0000
+
