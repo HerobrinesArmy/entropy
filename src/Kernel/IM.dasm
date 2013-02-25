@@ -16,13 +16,14 @@ hwn b
 sub b, 1
 ifg a, b
 set pc, .no_handler         ;interrupt does not belong to hardware, unknown source
-shl a, 1
-add a, [im_table_address]
-ife [a], 0
+set b, a
+shl b, 1
+add b, [im_table_address]
+ife [b], 0
 set pc, .no_handler
 set push, [current_process]     ;Make functions using [current_process]
-set [current_process], [a + 1]  ;work on the right process while in handler
-jsr [a]
+set [current_process], [b + 1]  ;work on the right process while in handler
+jsr [b]
 set [current_process], pop
 :.no_handler	;fail silently
 set b, pop
