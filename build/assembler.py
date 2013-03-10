@@ -416,6 +416,27 @@ class assembler:
                 else:
                     return (31, tmp)
             return 0
+
+    def isrelocatable(self, arg):
+        l = self.keyre.findall(' ' + arg)
+        for i in l:
+            if i not in self.reserved:
+                return True
+
+    def coderelocs(self, code):
+        opc = code[:3]
+        args = code[4:].split(',')
+        if opc == 'dat':
+            return [x for x in range(len(args)) if self.isrelocatable(args[x])]
+        if opc in self.opcodes:
+            r = []
+            if self.isrelocatable(args[1]): r.append(1)
+            if self.isrelocatable(args[0]):
+                r.append(1 + self.arglen(args[1]))
+            return r
+        if opc in self.spcops:
+            return [1] if self.isrelocatable(args[0]) else []
+        assert False
     
     def arglen(self, arg, a = False):
         #arg is assumed to be .strip().lower()ed
@@ -861,13 +882,8 @@ class assembler:
                     tmp = self.codelen(line, True)
                     if tmp:
                         if self.makefooter:
-                            args = line[4:].split(',')
-                            wno = -1
-                            for arg in args:
-                                wno += 1
-                                tmp2 = self.keyre.findall(' ' + arg)
-                                if any(x not in self.reserved for x in tmp2):
-                                    self.footerlist.append(self.wordno + wno)
+                            self.footerlist.extend([self.wordno + x for x in
+                                                    self.coderelocs(line)])
                         self.wordno += tmp[0]
                         line = tmp[1]
                     else:
@@ -892,7 +908,7 @@ class assembler:
                        ' ' + expr + ' ')[1:-1]
                 continue
             elif key in self.defines:
-                if type(self.defines[key]) != type(3):
+                if not isinstance(self.defines[key], int):
                     tried.append(key)
                     tmp = self.parse(self.defines[key], tried, unknownerrs)
                     if tmp == None:
