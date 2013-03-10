@@ -2,3 +2,6 @@
 
 ;Not implemented yet
 
+;DATA
+:fd_current_drive   .dat 0x0000
+

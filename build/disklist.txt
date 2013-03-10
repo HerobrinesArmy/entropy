@@ -1,4 +1,5 @@
-file Kernel/init.bin.dasm
+file Programs/dummy.bin.dasm
+file Programs/autocell.bin.dasm
 dir lib
 dir drv
 dir cfg

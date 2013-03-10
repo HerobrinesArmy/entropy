@@ -1,0 +1,52 @@
+:program_binary_file_start
+
+.binfooter
+
+.dat program_binary_file_end - program_binary_file_start
+
+.define mm_request         0x00
+.define mm_free            0x01
+.define mm_grow            0x02
+.define mm_shrink          0x03
+.define mm_resize          0x04
+.define mm_get_usage       0x05
+.define mm_section_count   0x06
+
+.define kl_push            0x07
+.define kl_pop             0x08
+.define kl_get             0x09
+
+.define ut_pushr           0x0a
+.define ut_popr            0x0b
+.define ut_pushx           0x0c
+.define ut_popx            0x0d
+.define ut_copy_mem        0x0e
+.define ut_fill_mem        0x0f
+.define ut_compare_mem_be  0x10
+.define ut_compare_mem_le  0x11
+
+.define im_request         0x12
+.define im_free            0x13
+
+.define sm_set_handler     0x14
+.define sm_send            0x15
+
+.define cd_set_handler     0x16
+.define cd_get_on_time     0x17
+.define cd_get_sys_time    0x18
+.define cd_set_sys_time    0x19
+
+.define pm_unlock          0x1a
+.define pm_add             0x1b
+.define pm_kill_me         0x1c
+.define pm_kill            0x1d
+.define pm_block_me        0x1e
+.define pm_unblock_me      0x1f
+.define pm_thread          0x20
+.define pm_hurry           0x21
+.define pm_urgent          0x22
+.define pm_set_speed       0x23
+.define pm_get_speed       0x24
+.define pm_get_pid         0x25
+
+

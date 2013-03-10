@@ -38,11 +38,11 @@ add a, 1
 and a, max_proc_num - 1
 set b, a
 shl b, 2
-ife c, a ;Check if we're round
+ife a, [current_process] ;Check if we're round
 jsr pm_handle_ints ;If we are, let some interrupts through to see if they unblock a process
 ifc [b + pm_flags], pm_blocked
 ifb [b + pm_flags], pm_hasproc
-add pc, 1
+add pc, 2
 set pc, .check_next
 ;Process A exists and is not blocked
 set c, pop
@@ -95,16 +95,119 @@ ifn [pm_semaphore], 0
 set pc, pop
 iaq 1
 set push, a
-set pc, pm_check_time
+jsr pm_check_time
+rfi 0 ;Short for: IAQ 0; SET A, POP; SET PC, POP
 
-;To be implemented.
+;================================
+;TEMPORARY, WILL BE REPLACED SOON
+;================================
+
+;Arguments: X = first sector of file
+;The first word of the file is expected to be it's total file length
+;The file is expected to be in a continuous series of sectors
+;The file is expected to end with a regular executable binary
 :pm_add
 add [pm_semaphore], 1
-
-
-set pc, pm_unlock ;Short for:
-;jsr pm_unlock
-;set pc, pop
+jsr ut_pushr
+;Find empty process entry
+set z, pm_flags - 4
+:.loop_a
+ife z, pm_flags + max_proc_num * 4 - 4
+set pc, .no_space
+add z, 4
+ifn [z], 0
+set pc, .loop_a
+sub z, pm_flags
+;Z is now the place we can put the process
+;Load first sector to disk to find length
+set a, 0x200
+jsr mm_request
+set y, a
+set a, 2
+hwi [fd_current_drive]
+jsr .waitdisk
+set a, [y]
+add a, 0x1ff
+and a, 0xfe00 ;A is now length in sectors
+jsr mm_request
+set c, [y]  ;C=filelength
+set b, a    ;B=location
+set push, b
+set push, c
+set a, y
+jsr mm_free
+set i, b
+add i, c
+sub i, 1
+set y, b
+set j, y
+;I=end of file ;J=Y=mem location to read to ;X=sector to read
+;POP=location << length of file
+:.loop_b
+set a, 2
+hwi [fd_current_drive]
+jsr .waitdisk
+add y, 0x200
+add x, 1
+ifg y, i
+add pc, 2
+set pc, .loop_b
+set y, j
+set j, [i]
+sub j, 4
+;File loaded in disk at location A with length B, ending at I
+;Relocation table length-1 in J
+;Relocate file
+sub i, 3
+:.loop_c
+set x, [i]
+add x, y
+add [x], y
+ifn j, 0
+std pc, .loop_c
+set c, pop
+set b, pop
+set i, b
+add i, c
+set a, [i - 3]
+jsr mm_request
+;A=stack location
+set [z + pm_stack_loc], a
+set [z + pm_location], b
+set [z + pm_flags], 0x0001
+add a, [i - 3]
+sub a, 10
+set [z + pm_sp], a
+set i, a
+sti [i], 0
+sti [i], 0
+sti [i], 0
+sti [i], 0
+sti [i], 0
+sti [i], 0
+sti [i], 0
+sti [i], pm_rfi
+sti [i], 0
+set [i], b
+add [i], 1 ;Skip first word which contains length
+jsr ut_popr
+set c, 0
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
+:.waitdisk
+set push, b
+set push, c
+set a, 0
+hwi [fd_current_drive] ;destroy C
+ifn b, 1
+ifn b, 2
+sub pc, 5
+set c, pop
+set b, pop
+set pc, pop
+:.no_space
+jsr ut_popr
+set c, err_out_of_space
+set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
 ;Kill the current process, do not call inside an interrupt/signal handler
 :pm_kill_me
@@ -167,10 +270,7 @@ bor [a + pm_flags], pm_blocked
 jsr pm_check_time
 :pm_rfi	;Used for new processes, the stack makes the PC pop to here
 		;This label has nothing to do with this function
-rfi 0 ;Short for:
-;iaq 0
-;set a, pop
-;set pc, pop
+rfi 0 ;Short for: IAQ 0; SET A, POP; SET PC, POP
 
 ;Return:	A = child PID for parent, -1 for child
 ;			B = -1, parent PID for child
@@ -230,6 +330,8 @@ set y, pop
 set pc, pop
 :.no_space
 ;Filled with processes already
+set i, pop
+set y, pop
 set a, 0
 set b, -1
 set c, err_out_of_space

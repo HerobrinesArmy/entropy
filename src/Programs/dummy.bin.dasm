@@ -1,0 +1,10 @@
+.include "prog_start.dasm"
+
+set x, 8
+jsr [pm_add]
+
+jsr [pm_block_me]
+
+sub pc, 1
+
+.include "prog_end.dasm"

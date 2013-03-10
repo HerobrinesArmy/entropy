@@ -21,10 +21,7 @@ shl b, 1
 add b, [im_table_address]
 ife [b], 0
 set pc, .no_handler
-set push, [current_process]     ;Make functions using [current_process]
-set [current_process], [b + 1]  ;work on the right process while in handler
 jsr [b]
-set [current_process], pop
 :.no_handler	;fail silently
 set b, pop
 set ex, pop

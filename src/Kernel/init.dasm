@@ -8,6 +8,9 @@
 :init
 set sp, init_stack_end
 
+:fd_init
+set [fd_current_drive], [0xffff]
+
 :im_init
 hwn a
 jsr mm_request
@@ -55,8 +58,10 @@ set a, 0
 set b, 1
 hwi i
 
-set a, 1
-jsr pm_add ;Won't work, unimplemented
+set x, 7
+jsr pm_add ;Load dummy.bin, located in sector 7.
+set [pm_semaphore], 0 ;Let the scheduling begin
+jsr pm_kill_me
 
 sub pc, 1
 
