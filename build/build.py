@@ -112,9 +112,8 @@ class diskdir:
     def getfat(self):
         self.getfsecs2()
         fat = []
-        if self.diskitems:
-            fat.extend(range(self.fs + 1, self.fs + self.slen))
-            fat.append(65535)
+        fat.extend(range(self.fs + 1, self.fs + self.slen))
+        fat.append(65535)
         for di in self.diskitems:
             if type(di) == diskfile:
                 if di.slen > 0:
