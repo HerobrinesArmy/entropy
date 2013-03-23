@@ -1,0 +1,158 @@
+;I/O SCHEDULER by LukeW4lker
+;NOTES:
+;j is used to work drive data array 
+;i is used to work with the queue
+
+:io_operator
+set push, i
+set push, j
+set push, z
+set push, y
+set push, x
+set push, c
+set push, b
+and a, 0xf
+set j, a
+mul j, 0x5
+add j, [io_drive_data] 
+set y, j
+;j is the current drive data entry
+IAQ 1
+set a, 0
+set b, 0
+hwi [j]
+ife c, 0xffff
+	set pc, .drivedead
+set i, [j+4]
+set x, i
+add x, 0x50
+sub i, 0x5
+:.loop0
+add i, 0x5
+ifg i, x
+	set i, [j+1]
+ife a, 16;
+	set pc, .return
+add a, 1
+ifg [i+3], 0x3; used to detect if the entry is still an error entry.
+	set pc, .loop0
+add i, 5 
+set [y+4], i; Moves the current entry pointer to the next 
+;position to be used by the next iteration of the operator position
+sub i, 5
+set i, 0x0
+ifn c, 0x0 
+	set pc, .cref
+set pc, .chkb
+:.cref
+set pc, [c + .cref]
+dat .busy
+dat .no_media
+dat .wp
+dat .ejectd
+dat	.bad_sector
+:.drivedead
+xor [j+3], 0x8
+jsr .seterrall
+jsr .add_job_off
+set pc, .return
+:.busy
+set c, 0x4
+set pc, .return
+:.bad_sector
+set c, 0x8
+jsr .seterrprevious
+set pc, .chkb
+:.wp
+set c, 0x10
+jsr .seterrprevious
+set pc, .chkb
+:.ejectd
+set c, 0x20
+jsr .seterrall
+jsr .add_job_off
+set pc, .return
+:.no_media
+set c, 0x40
+jsr .seterrall
+jsr .add_job_off
+set pc, .return
+:.chkb
+ifn b, 0x0 
+	set pc, .bref
+bor c, 0x80
+jsr .seterrall
+jsr .add_job_off
+set pc, .return
+
+:.bref
+set pc, [b + .bref]
+dat .ready
+dat .readwp
+dat .op_qck_exit;busy
+
+:.ready
+bor c, 0x100
+set pc, .schedlr_ready
+:.readywp
+bor c, 0x200
+set a, [j+3]
+and a, 0x4
+ifn [a], 0x0
+	set pc, .wperr
+set a, 0x2
+set pc, .schedlr_ready
+:.op_qck_exit
+bor c, 0x400
+set pc, .return
+:.wperr
+jsr .seterrall
+jsr .add_job_off
+set pc, .return
+:.schedlr_ready
+set y, [i]
+set x, [i+2]
+hwi [j]
+; should probably handle b output from drive here...meh
+set y, [j+1]
+add y, 0x50
+add [j+4], 5
+ife [j+4], y			; moves the queue to the next entry, returns to start of queue 
+	set [j+4], [j+1]
+:.return
+set ex, c
+set  b, pop
+set  c, pop
+set  x, pop
+set  y, pop
+set  z, pop
+set  i, pop
+set  j, pop
+RFI 0x0
+
+:.seterrall
+set i, [j+1]
+add i, 1
+set y, i
+set x, 0x50
+add x, i
+:.loop1
+ife y, x
+set pc, pop
+set [i], c
+add i, 1
+add y, 1
+set pc, .loop1
+
+:.add_job_off
+set y, [j+3]
+and y, 0x10
+ife y, 0x0
+bor [j+3], 0x5
+set pc, pop
+
+:.seterrprevious
+set i, [j+4] 
+sub i, 2
+set [i], b ; sets the previous entry to the error encountered. 
+set pc, pop
