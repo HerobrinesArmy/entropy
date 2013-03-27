@@ -42,7 +42,7 @@
 :.wait_for_floppy
 	SET	a,	0
 	HWI	a
-	ife	a,	3
+	ife	b,	3
 	sub	pc,	.base3 - .wait_for_floppy
 :.base3
 	IFE	A,	0x0000							; Command executed without errors?
@@ -51,10 +51,21 @@
 	SUB	PC,	.copy_os - .base1
 ; now copy the OS into the right place inside the memory.
 :.copy_os
-	SET	A,	0x0010
-	SET	B,	0
-	SET	C,	[0x8008]
-	;SUB	C,	1
 	SET	X,	0
-	HWI	I
-	SET	PC,	0				; and finally, start it.
+	SET	y,	0
+	:.copy_os_loop
+		set	a,	0
+		SET	B,	0
+		IFE	[0x8008],	0			; when equal 0, the entire Kernel has been loaded
+			SET	PC,	0				; and finally, start it.
+		SUB [0x8008],	1
+		ADD	X,	1
+		HWI I
+	:.wait_2
+		SET	A,	0
+		HWI	I
+		IFE	b,	3
+			set	pc,	0x8000 + .wait_2
+		ADD	y,	0x200
+		set	pc,	0x8000 + .copy_os_loop
+
