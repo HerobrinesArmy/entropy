@@ -14,6 +14,7 @@ hwn z
 set j, 0x0
 set a, z
 jsr mm_request
+ife a, 0xffff
 jsr fatal_error
 set [varintrgr], a
 set i, a
