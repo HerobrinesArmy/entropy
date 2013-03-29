@@ -8,8 +8,18 @@
 :init
 set sp, init_stack_end
 
+:fd_init
+set [fd_current_drive], [0xffff]
 
-:IO_init
+:im_init
+hwn a
+jsr mm_request
+ife a, -1
+jsr fatal_error ;Does not return
+set [im_table_address], a
+ias im_interrupt_handler
+
+:io_init
 hwn z
 set j, 0x0
 set a, z
@@ -75,7 +85,7 @@ set i, drive_count
 ifg z, i
          set pc, .exitloop2
 set a, 0
-set [y+3], 0x0;used to make sure that we have a blank slate when doing bors
+set [y+3], 0x0 ;used to make sure that we have a blank slate when doing bors
 hwi [y]
 ife b, 0xffff
         set pc, .halt
@@ -112,19 +122,6 @@ jsr mm_clear
 ife a, 0xffff
 jsr fatal_error
 
-
-
-
-:fd_init
-set [fd_current_drive], [0xffff]
-
-:im_init
-hwn a
-jsr mm_request
-ife a, -1
-jsr fatal_error ;Does not return
-set [im_table_address], a
-ias im_interrupt_handler
 
 :pm_init
 ;nothing to do here
