@@ -141,9 +141,6 @@ set pc, .no_clock
 hwq i
 ife a, 0xb402
 ife b, 0x12d0
-ife c, 0x0001
-ife x, 0x0000
-ife y, 0x0000
 set pc, .found_clock
 std pc, .loop_a
 :.no_clock
