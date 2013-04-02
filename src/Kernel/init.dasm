@@ -26,7 +26,7 @@ set a, z
 jsr mm_request
 ife a, 0xffff
 jsr fatal_error
-set [varintrgr], a
+set [varpointer], a
 set i, a
  
 :.drive_loop0
@@ -36,27 +36,24 @@ ife a, 0x24c5
                 jsr .add_drive
 ife j, z
         set pc, .exit0
-ife [drive_count], 0xf ; exit if the number of drives found is 16
+ife [io_drive_count], 0xf ; exit if the number of drives found is 16
         set pc, .exit0
 add j, 1
 set pc, .drive_loop0
- 
-:varintrgr
-.dat 0x0
- 
+
 :.add_drive
 set [i], j
 add i, 1
-add [drive_count], 1
+add [io_drive_count], 1
 set pc, pop
  
 :.exit0
-set a, [drive_count]
-set j, [varintrgr]
+set a, [io_drive_count]
+set j, [varpointer]
 set i, 0x0
 set x, a
 mul a, 8
-set b, drive_count
+set b, a
 mul b, 0x50
 add a, b
 jsr mm_request
@@ -79,8 +76,7 @@ add y, 7
 set pc, .loop1
  
 :.exitloop1
-set i, drive_count
-
+set i, io_drive_count
 :.loop2
 ifg z, i
          set pc, .exitloop2
@@ -90,7 +86,7 @@ hwi [y]
 ife b, 0xffff
         set pc, .halt
 :.ref
-set pc, [a+.ref]
+set pc, [b+.ref]
 .dat .nomedia
 .dat .ready
 .dat .wp
@@ -117,11 +113,32 @@ add z, 1
 set pc, .loop2
  
 :.exitloop2
-set a, .varintrgr
-jsr mm_clear
+set i, varpointer
+sub i, 0x1
+set c, i
+add c, io_drive_count
+:.loop3
+;i is the location of the HWI numbers
+add i, 1
+set a, io_operator
+set b, [i]
+add b, 0x1000
+jsr im_interrupt_handler
+set a, 1
+hwi [i]
+ife c, i
+	set pc, exitloop3
+set pc, .loop3
+
+:varpointer
+.dat 0x0
+
+:exitloop3
+sub i, io_drive_count
+set a, i
+jsr mm_free
 ife a, 0xffff
 jsr fatal_error
-
 
 :pm_init
 ;nothing to do here
@@ -152,7 +169,7 @@ jsr fatal_error
 :.found_clock
 set [cd_clock_id], i
 set a, i
-set b, cd_interrupt_handler
+set b, im_interrupt_handler
 jsr im_request
 set b, i
 add b, im_hardware_flag
@@ -166,7 +183,6 @@ set x, 7
 jsr pm_add ;Load dummy.bin, located in sector 7.
 set [pm_semaphore], 0 ;Let the scheduling begin
 jsr pm_kill_me
-
 sub pc, 1
 
 :fatal_error

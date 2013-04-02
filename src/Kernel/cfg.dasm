@@ -6,7 +6,7 @@
 
 ;ERROR NUMBERS
 
-.define err_unknown				0x01
+.define err_unknown			0x01
 .define err_no_permission		0x02
 .define err_out_of_space		0x03
 .define err_does_not_exist		0x04
@@ -14,9 +14,10 @@
 .define err_underflow			0x06
 .define err_already_in_use		0x07
 .define err_no_driver			0x08
-.define err_failed				0x09
+.define err_failed			0x09
 .define err_semaphore			0x0a
-.define err_self				0x0b
-
-.define err_fatal				0xffff
+.define err_self			0x0b
+.define err_oob				0x0c
+.define err_wp				0x0d
+.define err_fatal			0xffff
 

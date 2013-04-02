@@ -5,11 +5,6 @@
 ;DATA
 :fd_current_drive   .dat 0x0000
 
-:fd_drives
-.dat 0x0
-:io_drive_data
-.dat 0x0
-
 :fd_add_job
 ;By LukeW4lker
 ;a is the memory location to use.
@@ -18,7 +13,7 @@
 ;x is the drive we are going to be using. 
 ;Uses the allocated memory from the external interface and destroys y and i 
 ;y becomes the location of the entry in the queue and [y+2] is the entry's current state. (used to return errors)
-ifg x, [drive_count]
+ifg x, [io_drive_count]
 	set pc, .err0
 set [z+0xf], x
 mul x, 0x5
@@ -59,7 +54,7 @@ set [y+2], c
 set [y+3], [sp]
 sub [x+3], 1
 ife [x+2], 0x0
-jsr .startoperator
+jsr io_operator
 set x, [z+0xe]
 set pc, pop
 
@@ -81,11 +76,6 @@ ifg y, i
 ifn [y], 0xffff
 	set pc, .loop0
 set pc, pop
-
-:.findspaceErr
-set y, [z+0xe]
-jsr pm_block
-set pc, .loopenter
 
 :.nextentry
 add y, 5
