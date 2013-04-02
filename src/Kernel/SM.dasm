@@ -20,5 +20,6 @@ set [a + sm_signal_handlers], pop
 set pc, pop
 
 ;DATA
-:sm_signal_handlers		.reserve max_proc_num
+:sm_signal_handlers
+.reserve max_proc_num
 

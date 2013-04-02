@@ -10,8 +10,7 @@
 ;then the size of it is
 ;[A] - A - [A + 1]
 
-.define mm_first_section \
-            end_of_kernel
+.define mm_first_section end_of_kernel
 ;The first section is directly
 ;after the end of the kernel
 

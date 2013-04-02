@@ -58,5 +58,6 @@ set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
 ;DATA
 :kl_pos      .dat kl_log + kernel_log_size
-:kl_log      .reserve kernel_log_size
+:kl_log
+.reserve kernel_log_size
 
