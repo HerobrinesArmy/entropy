@@ -421,5 +421,5 @@ set pc, pop
 .define pm_flags		pm_proc_table + 3	;Flags:
 .define pm_hasproc		0x1				;Has process
 .define pm_blocked		0x2				;Is blocked
-.define max_proc_num	1 << max_proc_num_pwr
+.define max_proc_num	(1 << max_proc_num_pwr)
 
