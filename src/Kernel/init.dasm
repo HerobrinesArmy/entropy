@@ -27,7 +27,7 @@ set a, z
 jsr mm_request
 ife a, 0xffff
 jsr fatal_error
-set [varpointer], a
+set [.varpointer], a
 set i, a
  
 :.drive_loop0
@@ -50,12 +50,12 @@ set pc, pop
  
 :.exit0
 set a, [io_drive_count]
-set j, [varpointer]
+set j, [.varpointer]
 set i, 0x0
-set x, a
-mul a, 8
 set b, a
-mul b, 0x50
+set x, a
+mul a, 0x5 ; length of a drive data Entry 
+mul b, 0x50 ; Queue length for each drive
 add a, b
 jsr mm_request
 ife a, 0xffff
@@ -64,7 +64,6 @@ set y, a
 set [io_drive_data], y
 add b, a
 set z, b
- 
 :.loop1
 ifg i, x
         set pc, .exitloop1
@@ -73,19 +72,20 @@ add j, 1
 add i, 1
 set [y+1], z; queue location
 add z, 0x50
-add y, 7
+add y, 5
 set pc, .loop1
  
 :.exitloop1
 set i, io_drive_count
+set z, 0x0
 :.loop2
 ifg z, i
          set pc, .exitloop2
 set a, 0
-set [y+3], 0x0 ;used to make sure that we have a blank slate when doing bors
+set [y+2], 0x0 ;used to make sure that we have a blank slate when doing bors
 hwi [y]
 ife b, 0xffff
-        set pc, .halt
+        set pc, fatal_error
 :.ref
 set pc, [b+.ref]
 .dat .nomedia
@@ -94,27 +94,23 @@ set pc, [b+.ref]
 .dat .halt
  
 :.nomedia
-and [y+3], 0xfffd
+and [y+2], 0xfffd
 set pc, .refend
- 
 :.ready
-bor [y+3], 0x2
+bor [y+2], 0x2
 set pc, .refend
- 
-:.wp
-bor [y+3], 0x6
-set pc, .refend
- 
 :.halt
-sub pc, 1
- 
+set pc, fatal_error
+:.wp
+bor [y+2], 0x4
+
 :.refend
-add y, 7
+add y, 5; go to the next entry location
 add z, 1
 set pc, .loop2
  
 :.exitloop2
-set i, varpointer
+set i, .varpointer
 sub i, 0x1
 set c, i
 add c, io_drive_count
@@ -131,7 +127,7 @@ ife c, i
 	set pc, exitloop3
 set pc, .loop3
 
-:varpointer
+:.varpointer
 .dat 0x0
 
 :exitloop3
@@ -140,6 +136,7 @@ set a, i
 jsr mm_free
 ife a, 0xffff
 jsr fatal_error
+
 
 :pm_init
 ;nothing to do here

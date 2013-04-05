@@ -19,7 +19,7 @@ set push, c
 set push, b
 and a, 0xf
 set j, a
-mul j, 0x5
+mul j, 0x5 ; length of drive data entry
 add j, [io_drive_data] 
 set y, j
 ;j is the current drive data entry
@@ -29,84 +29,77 @@ set b, 0
 hwi [j]
 ife c, 0xffff
 	set pc, .drivedead
-set i, [j+4]
-set x, i
-add x, 0x50
-sub i, 0x5
-:.loop0
-add i, 0x5
-ifg i, x
-	set i, [j+1]
-ife a, 16;
-	set pc, .return
-add a, 1
-ifg [i+3], 0x3; used to detect if the entry is still an error entry.
-	set pc, .loop0
-add i, 5 
-set [y+4], i; Moves the current entry pointer to the next 
-;position to be used by the next iteration of the operator position
-sub i, 5
-set i, 0x0
-ifn c, 0x0 
+
+set [y+3], i; Moves the current entry pointer to the next position to be used by the next iteration of the operator position
+ifn c, 0x0
 	set pc, .cref
-set pc, .chkb
+set pc, .chkb ; if error none, check state
 :.cref
 set pc, [c + .cref]
-dat .busy
-dat .no_media
-dat .wp
-dat .ejectd
-dat	.bad_sector
+.dat .busy
+.dat .no_media
+.dat .wp
+.dat .ejectd
+.dat .bad_sector
 
 :.drivedead
-xor [j+3], 0x8
+xor [j+2], 0x8
+set c, 0x400
 jsr .seterrall
 jsr .add_job_off
 set pc, .return
 
 :.busy
+set c, 0x1
+set pc, .return
+
+:.no_media
+set c, 0x2
+jsr .seterrall
+jsr .add_job_off
+set pc, .return
+
+:.wp
 set c, 0x4
+jsr .setprevious
+set pc, .chkb
+
+:.ejectd
+set c, 0x8
+jsr .seterrall
+jsr .add_job_off
 set pc, .return
 
 :.bad_sector
-set c, 0x8
-jsr .seterrprevious
-set pc, .chkb
-
-:.wp
 set c, 0x10
-jsr .seterrprevious
-set pc, .chkb
-:.ejectd
-set c, 0x20
-jsr .seterrall
-jsr .add_job_off
-set pc, .return
-:.no_media
-set c, 0x40
-jsr .seterrall
-jsr .add_job_off
-set pc, .return
+jsr .setprevious
+; continues down
+
+
+
+
 :.chkb
 ifn b, 0x0 
 	set pc, .bref
-bor c, 0x80
+bor c, 0x20
 jsr .seterrall
 jsr .add_job_off
 set pc, .return
 
 :.bref
 set pc, [b + .bref]
-dat .ready
-dat .readywp
-dat .op_qck_exit;busy
+.dat .ready
+.dat .readywp
+.dat .op_qck_exit;busy
 
 :.ready
-bor c, 0x100
+bor c, 0x40
+jsr .setprevious
 set pc, .schedlr_ready
+
 :.readywp
-bor c, 0x200
-set a, [j+3]
+bor c, 0x80
+set a, [j+2]
 and a, 0x4
 ifn [a], 0x0
 	set pc, .wperr
@@ -114,14 +107,14 @@ set a, 0x2
 set pc, .schedlr_ready
 
 :.op_qck_exit
-bor c, 0x400
+bor c, 0x100
 set pc, .return
 
 :.wperr
 jsr .seterrall
-set b, [j+3]
-bor b, 0x8
-set [j+3], b
+set c, [j+2]
+bor c, 0x200
+set [j+2], c
 set pc, .return
 
 :.schedlr_ready
@@ -131,9 +124,9 @@ hwi [j]
 ; should probably handle b output from drive here...meh
 set y, [j+1]
 add y, 0x50
-add [j+4], 5
-ife [j+4], y			; moves the queue to the next entry, returns to start of queue 
-	set [j+4], [j+1]
+add [j+3], 5
+ife [j+3], y			; moves the queue to the next entry, returns to start of queue 
+	set [j+3], [j+1]
 :.return
 set ex, c
 set  b, pop
@@ -147,15 +140,16 @@ RFI 0x0
 
 :.seterrall
 set i, [j+1]
-add i, 1
+add i, 4
 set y, i
 set x, 0x50
 add x, i
 :.loop1
 ife y, x
-set pc, pop
-set [i], c
-add i, 1
+	set pc, pop
+set z, [i]
+set [z], c
+add i, 5
 add y, 1
 set pc, .loop1
 
@@ -163,18 +157,74 @@ set pc, .loop1
 set y, [j+3]
 and y, 0x10
 ife y, 0x0
-bor [j+3], 0x5
+bor [j+3], 0x10
 set pc, pop
 
-:.seterrprevious
-set i, [j+4] 
-sub i, 2
+:.setprevious
+set i, [j+3] 
+sub i, 1
 ifl i, [j+1]
 jsr .branchcon0
-set [i], b ; sets the previous entry to the error encountered. 
+set i, [i]
+set [i+1], c ; sets the previous mutex to the code encountered. 
 set pc, pop
 
 :.branchcon0
 set i, [j+1]
 add i, 0x50
+sub i, 0x1
+set pc, pop
+
+
+:io_object_create
+;creates an object at location a, if no space, halt computer.
+set a, 0x3
+jsr mm_request
+ife a, 0xffff
+set pc, fatal_error
+set [a], [current_process]
+set [a+1], 0x0
+set [a+2], 0x0
+set pc, pop
+
+:io_object_query
+;y is the location of the object
+;c is the intended state you are looking for the object to have
+;destroyes a
+;thread sleeps if the object is not in the requested state
+set c, [y+1]
+and c, a
+ife [c], a
+set pc, pop
+jsr pm_block_me
+set pc, pop
+
+:io_object_delete
+;y is the location of the entry in the queue to acknowldge and mark it as free
+;y is the location of the mutex object 
+;x is the drive
+;destroyes i and j 
+;searches the queue for the mutex object, Quits if it doesn't find it with 0xffff or exits with the same value in y having acknowldged the 
+;entry and deleted the Mutex object.
+mul x, 5
+set j, [x+1]
+add j, 0x3 ; offset of the mutex object location in the entry
+set i, j
+add i, 0x50 ; queue regular size (0x10*5)
+IAQ 0
+sub j, 5
+:.loop0
+add j, 5
+ife j, i
+	set pc, .err0
+ifn [j], y
+	set pc, .loop0
+;continues down
+:.exit0
+set [j+1], 0x5555; see .loop0 in add_job
+IAQ 1
+set pc, pop
+:.err0
+IAQ 1
+set a, 0xffff
 set pc, pop
