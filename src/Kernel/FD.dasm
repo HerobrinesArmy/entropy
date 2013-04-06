@@ -11,12 +11,12 @@
 
 :fd_add_job
 ;By LukeW4lker
-;a is the memory location to use.
-;b is the operation to perform. (bool; 2 = read 3 = write)
-;c is the sector to work on.
-;x is the drive we are going to be using. 
-;Uses the allocated memory from the external interface and destroys y, ex, j and i 
-;y becomes the location of the entry in the queue and [y+2] is the entry's current state. (used to return errors)
+; a is the memory location to use.
+; b is the operation to perform. (bool; 2 = read 3 = write)
+; c is the sector to work on.
+; x is the drive we are going to be using. 
+; Uses the allocated memory from the external interface and destroys y, ex and i 
+; y becomes the location of the entry in the queue and [y+2] is the entry's current state. (used to return errors)
 ifg x, [io_drive_count]
 	set pc, .err0
 set [z+0xf], x
@@ -27,10 +27,10 @@ and i, 0x4
 ifn i, 0x0 
 	ifg b, 0x2
 		set pc, .err1
-set i, [x+3]
+set i, [x+3]; set i to drive data flag word
 and i, 0x8 
-ifn i, 0x0 
-set pc, .errfatal
+ifn i, 0x0 ; check drive functionality
+	set pc, .errfatal 
 :.infloop ; loop until the queue is unlocked
 IAQ 0x1
 set i, [x+2]
@@ -44,43 +44,44 @@ set pc, .infloop
 bor [x+2], 0x20; lock the queue 
 IAQ 0x0
 set y, [x+1]
-set i, 0x50
-add i, y 
-set [z+0xe], a
-jsr io_object_create
-;i is the end of the queue
+
 ;y is the start the queue we will add an entry to.
 jsr .find_freespace
 ;y is now the location of the free entry.
-set [y], [z+0xe]
-set [y+1], b
-set [y+2], c
-set [y+3], a
+set i, a
+jsr io_object_create
+set [y],   i ; memory working location
+set [y+1], b ; sector
+set [y+2], c ; operation
+set [y+3], a ; location of mutex object
+set [y+4], 0x0 ; set entry to alive
 sub [x+2], 0x20; removes lock
-ifn [x+4], 0x0; check's if queue is empty.
+ifn [x+4], 0x0 ; check's if queue is empty.
 	set pc, pop
 set x, [z+0xf]
 add x, 0x1000
 jsr .startoperator
-set a, [z+0xe]
+set a, i 
 set pc, pop
 
 :.findspaceErr
-set y, [z+0xd]
+set y, [z+0xe]
 jsr pm_block_me
 set pc, .loopenter
 ;Loops here forever until it finds a free entry
 
 :.find_freespace
-set [z+0xd], y ; stores the y in FD memory block.
-
+set [z+0xe], y
+set i, 0x50
+add i, y
+;i is the end of the queue
 :.loopenter
 sub y, 5
 :.loop0
 add y, 5
 ifg y, i
 	set pc, .findspaceErr
-ife [y+4], 0x5555
+ifn [y+4], 0x5555 ;check if the entry is mortem
 	set pc, .loop0
 set pc, pop
 
@@ -88,10 +89,12 @@ set pc, pop
 set a, 0xffff
 set x, 0xffff
 set pc, pop
+
 :.err0
 set a, 0xffff
 set x, err_oob
 set pc, pop
+
 :.err1
 set a, 0xffff
 set b, err_wp

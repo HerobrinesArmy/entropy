@@ -177,7 +177,8 @@ set pc, pop
 
 
 :io_object_create
-;creates an object at location a, if no space, halt computer.
+;creates an object at location i, if no space, halt computer.
+
 set a, 0x3
 jsr mm_request
 ife a, 0xffff
