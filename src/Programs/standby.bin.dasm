@@ -1,0 +1,81 @@
+; *************************
+; Project: Entropy
+; File: standby.dasm
+; *************************
+
+.include "prog_start.dasm"
+
+;Hardware Detection
+hwn i
+sub i, 1
+:loop_a
+hwq i
+ife a, 0xbf3c
+ife b, 0x42ba
+set [sped_address], i
+ifn i, 0
+std pc, loop_a
+
+;SPED Setup
+set a, 1
+set x, HA_logo
+set y, [HA_logo - 1]
+hwi [sped_address]
+
+;SPED Turning
+set a, 2
+set x, 100
+hwi [sped_address]
+jsr [cd_get_on_time]
+set c, b
+:loop_b
+:loop_b_a
+jsr [pm_sleep]
+jsr [cd_get_on_time]
+sub b, c
+ifl b, 60
+set pc, loop_b_a
+
+add x, 50
+mod x, 360
+set a, 2
+hwi [sped_address]
+add c, 60
+set pc, loop_b
+
+sub pc, 1
+
+:int_handler
+add [time], 1
+iaq 0
+set a, pop
+set pc, pop
+
+:time .dat 0x0000
+:sped_address .dat 0x0000
+:clock_address .dat 0x0000
+
+;Black Red Green Blue Bright*
+;Z is farther away from the emitter
+
+.dat 15 ;number of vertices
+:HA_logo
+.dat 0x8027, 0x00d5
+.dat 0x8075, 0x057e
+.dat 0x805a, 0x05b3
+.dat 0x80ce, 0x05d5
+.dat 0x8027, 0x05d5
+
+.dat 0x80d8, 0x00d2
+.dat 0x806b, 0x05b3
+.dat 0x80a8, 0x05b3
+.dat 0x8087, 0x0535
+.dat 0x80d8, 0x05d2
+
+.dat 0x807e, 0x0029
+.dat 0x809b, 0x059b
+.dat 0x8080, 0x056a
+.dat 0x802c, 0x05c6
+.dat 0x807e, 0x0529
+
+.include "prog_end.dasm"

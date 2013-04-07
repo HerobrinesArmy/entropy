@@ -45,8 +45,9 @@
 .dat pm_set_speed       ;0x23
 .dat pm_get_speed       ;0x24
 .dat pm_get_pid         ;0x25
+.dat pm_sleep			;0x26
 
 ;FD and LM functions not included as they are still unstable
 
-.define api_table_length 0x26
+.define api_table_length 0x27
 

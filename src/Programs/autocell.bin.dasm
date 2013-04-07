@@ -1,1 +1,116 @@
-.include "prog_start.dasm"set a, 384+64jsr [mm_request]add a, 64and a, 0xffc0       ;Align to 64 blocks, program won't work properly otherwiseset [mem_video], a:search_hardwarehwn isub i, 1:search_hardware_loophwq iife b, [id_lem]ife a, [id_lem+1]set [add_lem], iifn i, 0std pc, search_hardware_loopset b, [mem_video]set a, 0hwi [add_lem]set b, logo_fontset a, 1hwi [add_lem]set i, [mem_video]add i, 0x160set b, seedset a, 0x8000set x, badd x, 2:loop1set c, aand c, [b]ifn c, 0set c, 1bor [i], cbor [i], 0xf000shr a, 1ife a, 0add b, 1ife a, 0set a, 0x8000add i, 1ifn x, bset pc, loop1:totloopset i, [mem_video]set x, iadd x, 0x180:loop3set a, [i]and [i], 0xfff0and a, 1ife a, 1bor [i], 2set a, iadd a, 0x20set a, [a]and a, 2ife a, 2bor [i], 1bor [i], 0xf000add i, 1ifn i, xset pc, loop3set i, [mem_video]add i, 0x160set a, 0set x, iadd x, 0x20set [x], 0:loop4sti b, [i]and b, 2bor a, bset b, [i]and b, 2shr b, 1bor a, bset b, [rule]shr b, aand b, 1sub i, 1bor [i], bsti b, [i]and b, 2shl b, 1set a, bifn i, xset pc, loop4set pc, totloopsub pc, 1:add_lem   dat 0:mem_video dat 0x0000:id_lem    dat 0x7349, 0xf615:color     dat 0xf000:rule      dat 0x69:seed      dat 0xf001, 0x0001:logo_fontdat 0x0000, 0x0000 ;00dat 0xf0f0, 0xf0f0 ;01dat 0x0f0f, 0x0f0f ;02dat 0xffff, 0xffff ;03.include "prog_end.dasm"
+.include "prog_start.dasm"
+
+set a, 384+64
+jsr [mm_request]
+add a, 64
+and a, 0xffc0       ;Align to 64 blocks, program won't work properly otherwise
+set [mem_video], a
+
+:search_hardware
+hwn i
+sub i, 1
+:search_hardware_loop
+hwq i
+ife b, [id_lem]
+ife a, [id_lem+1]
+set [add_lem], i
+ifn i, 0
+std pc, search_hardware_loop
+set b, [mem_video]
+set a, 0
+hwi [add_lem]
+set b, logo_font
+set a, 1
+hwi [add_lem]
+set i, [mem_video]
+add i, 0x160
+set b, seed
+set a, 0x8000
+set x, b
+add x, 2
+
+:loop1
+set c, a
+and c, [b]
+ifn c, 0
+set c, 1
+bor [i], c
+bor [i], 0xf000
+shr a, 1
+ife a, 0
+add b, 1
+ife a, 0
+set a, 0x8000
+add i, 1
+ifn x, b
+set pc, loop1
+
+:totloop
+
+set i, [mem_video]
+set x, i
+add x, 0x180
+
+:loop3
+set a, [i]
+and [i], 0xfff0
+and a, 1
+ife a, 1
+bor [i], 2
+set a, i
+add a, 0x20
+set a, [a]
+and a, 2
+ife a, 2
+bor [i], 1
+bor [i], 0xf000
+add i, 1
+ifn i, x
+set pc, loop3
+
+set i, [mem_video]
+add i, 0x160
+set a, 0
+set x, i
+add x, 0x20
+set [x], 0
+
+:loop4
+sti b, [i]
+and b, 2
+bor a, b
+set b, [i]
+and b, 2
+shr b, 1
+bor a, b
+set b, [rule]
+shr b, a
+and b, 1
+sub i, 1
+bor [i], b
+sti b, [i]
+and b, 2
+shl b, 1
+set a, b
+ifn i, x
+set pc, loop4
+
+set pc, totloop
+sub pc, 1
+
+
+:add_lem   dat 0
+:mem_video dat 0x0000
+:id_lem    dat 0x7349, 0xf615
+:color     dat 0xf000
+
+
+:rule      dat 0x69
+:seed      dat 0xf001, 0x0001
+:logo_font
+dat 0x0000, 0x0000 ;00
+dat 0xf0f0, 0xf0f0 ;01
+dat 0x0f0f, 0x0f0f ;02
+dat 0xffff, 0xffff ;03
+
+.include "prog_end.dasm"

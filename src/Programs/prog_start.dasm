@@ -48,5 +48,6 @@
 .define pm_set_speed       0x23
 .define pm_get_speed       0x24
 .define pm_get_pid         0x25
+.define pm_sleep           0x26
 
 

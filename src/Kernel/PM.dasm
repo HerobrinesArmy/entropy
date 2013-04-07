@@ -88,6 +88,12 @@ iaq 1
 sub [pm_semaphore], 1
 set pc, pop
 
+;Set til_next to 0 and call schedule
+:pm_sleep
+set [pm_til_next], 0
+add pc, 2
+;walk into pm_unlock
+
 ;End a semaphore session, reducing the semaphore by 1 and checking the time if it's 0
 :pm_unlock
 sub [pm_semaphore], 1

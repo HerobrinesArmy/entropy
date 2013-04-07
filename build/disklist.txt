@@ -1,5 +1,5 @@
 file Programs/dummy.bin.dasm
-file Programs/autocell.bin.dasm
+file Programs/standby.bin.dasm
 dir lib
 dir drv
 dir cfg

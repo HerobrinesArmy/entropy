@@ -14,7 +14,6 @@ set pc, init
 .include "PM.dasm"
 .include "FD.dasm"
 .include "LM.dasm"
-.include "IO.dasm"
 :end_of_kernel
 
 ;First memory section header
