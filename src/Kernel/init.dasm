@@ -55,7 +55,7 @@ set a, 0
 set b, 1
 hwi i
 
-set x, 7
+set x, 8
 jsr pm_add ;Load dummy.bin, located in sector 7.
 set [pm_semaphore], 0 ;Let the scheduling begin
 jsr pm_kill_me

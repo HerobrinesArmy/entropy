@@ -1,6 +1,6 @@
 .include "prog_start.dasm"
 
-set x, 8
+set x, 9
 jsr [pm_add]
 
 jsr [pm_block_me]
