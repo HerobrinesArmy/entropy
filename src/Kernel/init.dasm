@@ -60,13 +60,14 @@ jsr pm_add ;Load dummy.bin, located in sector 7.
 set [pm_semaphore], 0 ;Let the scheduling begin
 jsr pm_kill_me
 
-sub pc, 1
+sub pc, 3 ;if this proc didn't get killed, try again.
 
 :fatal_error
-set a, 0xffff
-set b, a
-set c, b
-set x, c
+;TODO Add stack output on LEM
+set a, sp
+set b, [sp]
+set c, [sp + 1]
+set x, 0xffff
 set y, x
 set z, y
 set i, 0

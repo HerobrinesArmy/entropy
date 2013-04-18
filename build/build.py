@@ -10,8 +10,8 @@ def stripdir(path):
 class diskfile:
     def __init__(self, diskname, contents):
         dl = diskname.rfind('.')
-        self.name = (diskname[:dl] + '\0' * 8)[:8]
-        self.ext = (diskname[dl + 1:] + '\0' * 3)[:3]
+        self.name = (diskname[:dl] + '\0' * 8)[:8] if dl != -1 else diskname
+        self.ext = (diskname[dl + 1:] + '\0' * 3)[:3] if dl != -1 else '\0\0\0'
         self.contents = contents
         self.len = len(contents)
         self.slen = ((self.len - 1) >> 9) + 1
@@ -207,7 +207,7 @@ if True:
                     file = '../bin/' + file
                     tmp = entropy.readbin(file)
                     if tmp:
-                        root.additem(diskfile(stripdir(file), tmp.words), path)
+                        root.additem(diskfile(stripdir(file), tmp), path)
                     else:
                         print('Failed to access file: ' + i)
                 elif com == 'file':

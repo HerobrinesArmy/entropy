@@ -2,3 +2,165 @@
 ; Project: Entropy
 ; File: DM.dasm
 ; *************************
+
+:dm_init
+set z, 0
+hwn i
+sub i, 1
+:.loop_a
+hwq i
+ife a, hwq_m35fd_a
+ife b, hwq_m35fd_b
+ife c, hwq_m35fd_c
+ife x, hwq_m35fd_x
+ife y, hwq_m35fd_y
+add z, 1
+ifn i, 0
+std pc, .loop_a
+set [dm_drive_num], a
+shl z, 2
+set a, z
+jsr mm_request
+ife a, -1
+jsr fatal_error ;does not return
+set [dm_drive_data], a
+set z, a
+hwn i
+sub i, 1
+:.loop_b
+hwq i
+ife a, hwq_m35fd_a
+ife b, hwq_m35fd_b
+ife c, hwq_m35fd_c
+ife x, hwq_m35fd_x
+ife y, hwq_m35fd_y
+jsr .add_m35fd
+ifn i, 0
+std pc, .loop_a
+set pc, .continue
+:.add_m35fd
+set a, i
+set b, dm_handler
+jsr im_request
+ifn a, 0 ;Couldn't get interrupt handler
+set pc, pop ;Skip this drive
+set a, 1
+set x, i
+add x, 0x1000
+hwi i
+set [z], i
+add z, 1
+set pc, pop
+:.continue
+
+:dm_handler
+set i, [dm_drive_data]
+:.loop_a
+ifn [i], a
+sti pc, .loop_a
+set a, 0
+hwi [i]
+ifn c, 2
+ifn c, 4
+ifn c, -1
+ifn b, 0
+add pc, 2
+set pc, .clear_queue
+;Set success or failure
+set a, [dm_current]
+set [a+1], 1 ;success
+ife c, 5
+set [a+1], -1 ;failure
+set [dm_current], [a]
+;If drive still busy, return
+ife b, 3
+set pc, pop
+;Do next op
+
+:.clear_queue
+;Clear the queue by telling each item it failed and then deleting it in order, then return
+set a, [dm_current]
+ife a, 0
+set pc, .clear_end
+:.loop_b
+set [a+1], -1
+set a, [a]
+ifn a, 0
+set pc, .loop_a
+:.clear_end
+set [dm_current], 0
+set [dm_next_ptr], 0
+set pc, pop
+
+
+
+
+.define dm_drive_data_size 4
+;HWA 0-z
+;next_ptr 0-z
+;current 0-z
+
+:dm_drive_data	.dat 0x0000
+:dm_drive_num	.dat 0x0000
+
+:dm_next_ptr .dat 0x0000
+:dm_current  .dat 0x0000
+;[dm_current] is where the data for the current running op is
+;and also the AXYZ for the next op.
+;[[dm_current]] is where the data for the next op is and the AXYZ for the op after that
+;[[dm_current]+1] is A for next op
+;[[dm_current]+2] is X for next op
+;[[dm_current]+3] is Y for next op
+;[[dm_current]+4] is Z for next op
+
+;A = 2=read/3=write
+;X = sector to work on
+;Y = memory to work on
+;Z = drive to work on
+;Returns after op is done with:
+;A = 1=success/-1=failure
+:dm_add
+add [pm_semaphore], 1
+ifn [dm_next_ptr], 0
+set pc, .queue
+sub sp, 4
+set push, 0
+set [dm_next_ptr], sp ;pop
+set [dm_current], sp
+jsr pm_unlock
+ifn [dm_current], sp ;current is not us.
+set pc, .finish
+jsr pm_block_me
+sub pc, 7
+:.queue
+set b, [dm_next_ptr]
+set [b+1], a
+set [b+2], x
+set [b+3], y
+set [b+4], z ;drive to use
+
+:.finish
+set a, -1
+ife [sp+1], 1
+set a, 1
+add sp, 5
+set pc, pop
+
+;HWA 0-Z
+
+;Pass around sector numbers which act as file and dir handlers.
+;Processes block when waiting for IO
+;ALWAYS poll drive after starting an op?
+
+;Remember:
+;For every drive:
+;hardware address
+;operations queue
+
+;OPERATIONS QUEUE:
+;Entry:
+;0x0 next process 
+
+;dm_add
+
+

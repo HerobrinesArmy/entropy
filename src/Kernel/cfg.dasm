@@ -6,18 +6,22 @@
 
 ;ERROR NUMBERS
 
-.define err_unknown			0x01
-.define err_no_permission		0x02
-.define err_out_of_space		0x03
-.define err_does_not_exist		0x04
-.define err_overflow			0x05
-.define err_underflow			0x06
-.define err_already_in_use		0x07
-.define err_no_driver			0x08
-.define err_failed			0x09
-.define err_semaphore			0x0a
-.define err_self			0x0b
-.define err_oob				0x0c
-.define err_wp				0x0d
-.define err_fatal			0xffff
+.define err_unknown             0x01
+.define err_no_permission       0x02
+.define err_out_of_space        0x03
+.define err_does_not_exist      0x04
+.define err_overflow            0x05
+.define err_underflow           0x06
+.define err_already_in_use      0x07
+.define err_no_driver           0x08
+.define err_failed              0x09
+.define err_semaphore           0x0a
+.define err_self                0x0b
+.define err_fatal               0xffff
 
+;HWQ NUMBERS
+.define hwq_m35fd_a         0x24c5
+.define hwq_m35fd_b         0x4fd5
+.define hwq_m35fd_c         0x000b
+.define hwq_m35fd_x         0x7e91
+.define hwq_m35fd_y         0x1eb3

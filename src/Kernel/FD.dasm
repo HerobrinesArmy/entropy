@@ -4,3 +4,10 @@
 
 ;DATA
 :fd_current_drive   .dat 0x0000
+
+;Directory Entry
+;0x0    Name
+;0x4    Flags
+;0x4.8  Extension
+;0x6    Size in words, max
+;0x7    First sector

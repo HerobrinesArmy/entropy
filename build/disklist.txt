@@ -7,3 +7,5 @@ dir klog
 dir user
 dir prog
 dir boot
+dir txt
+bin ../src/Kernel/MM.dasm txt

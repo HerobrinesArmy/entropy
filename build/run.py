@@ -1,3 +1,5 @@
+#! /usr/bin/env python3.3
+
 import os, platform
 
 l = ['genericclock', 'sped3', 'spc2000', 'm35fd', 'lem1802', 'generickeyboard']

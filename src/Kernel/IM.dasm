@@ -4,7 +4,6 @@
 
 ;IM table entry:
 ;0x0 handler or 0 if no handler
-;0x1 process
 
 .define im_hardware_flag		0x1000	;Never set this to 0
 
@@ -17,10 +16,8 @@ sub b, 1
 ifg a, b
 set pc, .no_handler         ;interrupt does not belong to hardware, unknown source
 set b, a
-shl b, 1
 add b, [im_table_address]
-ife [b], 0
-set pc, .no_handler
+ifn [b], 0
 jsr [b]
 :.no_handler	;fail silently
 set b, pop
@@ -29,12 +26,10 @@ rfi 0
 
 :im_request
 add [pm_semaphore], 1
-shl a, 1
 add a, [im_table_address]
 ifn [a], 0
 set pc, .already_in_use
 set [a], b
-set [a + 1], [current_process]
 set a, 0		;success
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 :.already_in_use
@@ -43,7 +38,6 @@ set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
 :im_free
 add [pm_semaphore], 1
-shl a, 1
 add a, [im_table_address]
 set [a], 0
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP

@@ -111,7 +111,7 @@ rfi 0 ;Short for: IAQ 0; SET A, POP; SET PC, POP
 ;Arguments: X = first sector of file
 ;The first word of the file is expected to be it's total file length
 ;The file is expected to be in a continuous series of sectors
-;The file is expected to end with a regular executable binary
+;The file is expected to end with a regular executable binary footer
 :pm_add
 add [pm_semaphore], 1
 jsr ut_pushr

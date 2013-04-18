@@ -12,6 +12,7 @@ set pc, init
 .include "SM.dasm"
 .include "CD.dasm"
 .include "PM.dasm"
+.include "DM.dasm"
 .include "FD.dasm"
 .include "LM.dasm"
 :end_of_kernel
@@ -26,13 +27,13 @@ set pc, init
 
 ;KERNEL COMMENTS
 ;MODULE [DONE] [TESTED] - Comments
-;MM DONE - TODO: Add counters
+;MM DONE
 ;KL DONE
 ;UT DONE
 ;IM DONE
 ;SM DONE
 ;CD DONE
-;PM
+;PM DONE
 ;FD
 ;LM
 ;init
