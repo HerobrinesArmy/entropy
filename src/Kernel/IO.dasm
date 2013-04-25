@@ -19,7 +19,7 @@ set push, c
 set push, b
 and a, 0xf
 set j, a
-mul j, 0x5 ; length of drive data entry
+mul j, 0x6 ; length of drive data entry
 add j, [io_drive_data] 
 set y, j
 ;j is the current drive data entry
@@ -74,9 +74,6 @@ set pc, .return
 set c, 0x10
 jsr .setprevious
 ; continues down
-
-
-
 
 :.chkb
 ifn b, 0x0 
@@ -166,7 +163,7 @@ sub i, 1
 ifl i, [j+1]
 jsr .branchcon0
 set i, [i]
-set [i+1], c ; sets the previous mutex to the code encountered. 
+set [i+1], c ; sets the previous io object to the code encountered. 
 set pc, pop
 
 :.branchcon0
@@ -205,11 +202,11 @@ set pc, pop
 ;y is the location of the mutex object 
 ;x is the drive
 ;destroyes i and j 
-;searches the queue for the mutex object, Quits if it doesn't find it with 0xffff or exits with the same value in y having acknowldged the 
-;entry and deleted the Mutex object.
-mul x, 5
+;searches the queue for the IO object, Quits if it doesn't find it with 0xffff or exits with the same value in y having acknowldged the 
+;entry and deleted the IO object.
+mul x, 6
 set j, [x+1]
-add j, 0x3 ; offset of the mutex object location in the entry
+add j, 0x3 ; offset of the IO object location in the entry
 set i, j
 add i, 0x50 ; queue regular size (0x10*5)
 IAQ 0
