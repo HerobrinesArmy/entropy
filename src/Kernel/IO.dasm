@@ -2,7 +2,7 @@
 ;NOTES:
 ;j is used to work  data array 
 ;i is used to work with the queue
-
+;Queue references still need to be changed to "job list" or just "list"
 ;DATA
 :io_drive_data
 .dat 0x0
@@ -114,15 +114,16 @@ bor c, 0x200
 set [j+2], c
 set pc, .return
 
-:.schedlr_ready
-set y, [i]
-set x, [i+2]
-hwi [j]
+:.schedlr_ready ;Reads the job and sends data to drive
+set y, [i]	;Memory to use
+set x, [i+2]	;Sector
+hwi [j]		;Obvious Hardware interrupt number
 ; should probably handle b output from drive here...meh
-set y, [j+1]
+
+set y, [j+1] ;moves the queue to the next entry, returns to start of job list
 add y, 0x50
 add [j+3], 5
-ife [j+3], y			; moves the queue to the next entry, returns to start of queue 
+ife [j+3], y			; moves the queue to the next entry, returns to start of job list
 	set [j+3], [j+1]
 :.return
 set ex, c
@@ -135,7 +136,7 @@ set  i, pop
 set  j, pop
 RFI 0x0
 
-:.seterrall
+:.seterrall ;Sets all the entries in the job list to the specified code (c register).
 set i, [j+1]
 add i, 4
 set y, i
@@ -145,12 +146,12 @@ add x, i
 ife y, x
 	set pc, pop
 set z, [i]
-set [z], c
+set [z], c; set object of entry I.
 add i, 5
 add y, 1
 set pc, .loop1
 
-:.add_job_off
+:.add_job_off ;Turns off the job list we are currently working on
 set y, [j+3]
 and y, 0x10
 ife y, 0x0
