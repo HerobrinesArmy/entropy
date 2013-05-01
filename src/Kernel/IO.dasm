@@ -17,7 +17,6 @@ set push, y
 set push, x
 set push, c
 set push, b
-and a, 0xf
 set j, a
 mul j, 0x6 ; length of drive data entry
 add j, [io_drive_data] 

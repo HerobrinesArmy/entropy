@@ -21,6 +21,7 @@ set [im_table_address], a
 ias im_request
 ife a, err_already_in_use
 set pc, fatal_error
+
 :io_init
 hwn z
 set j, 0x0
@@ -115,8 +116,10 @@ set i, .varpointer
 sub i, 0x1
 set x, i
 add x, io_drive_count
+set c, 0xffff
 :.loop3
 ;i is the location of the HWI numbers
+add c, 1
 add i, 1
 set a, io_operator
 set b, [i]
