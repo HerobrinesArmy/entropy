@@ -169,7 +169,6 @@ set pc, pop
 :.startoperator
 int [x]
 ;ex is what the drive returned when it was polled by the scheduler.
-
 set pc, pop
 
 

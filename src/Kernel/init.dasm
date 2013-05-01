@@ -17,9 +17,9 @@ jsr mm_request
 ife a, -1
 jsr fatal_error ;Does not return
 set [im_table_address], a
-ias im_interrupt_handler
-
-
+ias im_request
+ife a, err_already_in_use
+set pc, fatal_error
 :io_init
 hwn z
 set j, 0x0
