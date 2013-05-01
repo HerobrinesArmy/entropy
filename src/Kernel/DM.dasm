@@ -3,61 +3,13 @@
 ; File: DM.dasm
 ; *************************
 
-:dm_init
-set z, 0
-hwn i
-sub i, 1
-:.loop_a
-hwq i
-ife a, hwq_m35fd_a
-ife b, hwq_m35fd_b
-ife c, hwq_m35fd_c
-ife x, hwq_m35fd_x
-ife y, hwq_m35fd_y
-add z, 1
-ifn i, 0
-std pc, .loop_a
-set [dm_drive_num], a
-shl z, 2
-set a, z
-jsr mm_request
-ife a, -1
-jsr fatal_error ;does not return
-set [dm_drive_data], a
-set z, a
-hwn i
-sub i, 1
-:.loop_b
-hwq i
-ife a, hwq_m35fd_a
-ife b, hwq_m35fd_b
-ife c, hwq_m35fd_c
-ife x, hwq_m35fd_x
-ife y, hwq_m35fd_y
-jsr .add_m35fd
-ifn i, 0
-std pc, .loop_a
-set pc, .continue
-:.add_m35fd
-set a, i
-set b, dm_handler
-jsr im_request
-ifn a, 0 ;Couldn't get interrupt handler
-set pc, pop ;Skip this drive
-set a, 1
-set x, i
-add x, 0x1000
-hwi i
-set [z], i
-add z, 1
-set pc, pop
-:.continue
-
 :dm_handler
 set i, [dm_drive_data]
-:.loop_a
+sub i, 4
+add i, 4
 ifn [i], a
-sti pc, .loop_a
+sub pc, 3
+;I is address of drive entry
 set a, 0
 hwi [i]
 ifn c, 2
@@ -79,23 +31,28 @@ set pc, pop
 
 :.clear_queue
 ;Clear the queue by telling each item it failed and then deleting it in order, then return
-set a, [dm_current]
+set a, [i + dm_drive_current]
 ife a, 0
 set pc, .clear_end
 :.loop_b
 set [a+1], -1
 set a, [a]
 ifn a, 0
-set pc, .loop_a
+set pc, .loop_b
 :.clear_end
-set [dm_current], 0
-set [dm_next_ptr], 0
+set [i + dm_drive_current], 0
+set [i + dm_drive_next_ptr], 0
 set pc, pop
 
 
 
 
-.define dm_drive_data_size 4
+.define dm_drive_data_size	4
+
+.define dm_drive_address	0
+.define dm_drive_next_ptr	1
+.define dm_drive_current	2
+.define dm_drive_reserved	3
 ;HWA 0-z
 ;next_ptr 0-z
 ;current 0-z

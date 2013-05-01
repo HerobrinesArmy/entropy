@@ -55,6 +55,62 @@ set a, 0
 set b, 1
 hwi i
 
+:dm_init
+set z, 0
+hwn i
+sub i, 1
+:.loop_a
+hwq i
+ife a, hwq_m35fd_a
+ife b, hwq_m35fd_b
+ife c, hwq_m35fd_c
+ife x, hwq_m35fd_x
+ife y, hwq_m35fd_y
+add z, 1
+ifn i, 0
+std pc, .loop_a
+set [dm_drive_num], a
+shl z, 2
+set a, z
+jsr mm_request
+ife a, -1
+jsr fatal_error ;does not return
+set push, a
+set i, a
+set a, z
+set b, 0
+jsr ut_fill_mem
+set z, pop
+set [dm_drive_data], z
+hwn i
+sub i, 1
+:.loop_b
+hwq i
+ife a, hwq_m35fd_a
+ife b, hwq_m35fd_b
+ife c, hwq_m35fd_c
+ife x, hwq_m35fd_x
+ife y, hwq_m35fd_y
+jsr .add_m35fd
+ifn i, 0
+std pc, .loop_a
+set pc, .continue
+:.add_m35fd
+set a, i
+set b, dm_handler
+jsr im_request
+ifn a, 0 ;Couldn't get interrupt handler
+set pc, pop ;Skip this drive
+set a, 1
+set x, i
+add x, 0x1000
+hwi i
+set [z], i
+add z, 1
+set pc, pop
+:.continue
+
+;Load processes
 set x, 8
 jsr pm_add ;Load dummy.bin, located in sector 7.
 set [pm_semaphore], 0 ;Let the scheduling begin

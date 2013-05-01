@@ -25,3 +25,27 @@
 .define hwq_m35fd_c         0x000b
 .define hwq_m35fd_x         0x7e91
 .define hwq_m35fd_y         0x1eb3
+
+.define hwq_clock_a			0xb402
+.define hwq_clock_b			0x12d0
+
+.define hwq_keyboard_a		0x7406
+.define hwq_keyboard_b		0x30cf
+
+.define hwq_sped3_a			0xbf3c
+.define hwq_sped3_b			0x42ba
+.define hwq_sped3_c			0x0003
+.define hwq_sped3_x			0x7e91
+.define hwq_sped3_y			0x1eb3
+
+.define hwq_lem1802_a		0xf615
+.define hwq_lem1802_b		0x7349
+.define hwq_lem1802_c		0x1802
+.define hwq_lem1802_x		0x8b36
+.define hwq_lem1802_y		0x1c6c
+
+.define hwq_spc2000_a		0x1d9d
+.define hwq_spc2000_b		0x40e4
+.define hwq_spc2000_c		0x005e
+.define hwq_spc2000_x		0x8b36
+.define hwq_spc2000_y		0x1c6c 
