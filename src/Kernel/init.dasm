@@ -13,6 +13,7 @@ set [fd_current_drive], [0xffff]
 
 :im_init
 hwn a
+shl a, 1
 jsr mm_request
 ife a, -1
 jsr fatal_error ;Does not return
@@ -112,18 +113,18 @@ set pc, .loop2
 :.exitloop2
 set i, .varpointer
 sub i, 0x1
-set c, i
-add c, io_drive_count
+set x, i
+add x, io_drive_count
 :.loop3
 ;i is the location of the HWI numbers
 add i, 1
 set a, io_operator
 set b, [i]
-add b, 0x1000
-jsr im_interrupt_handler
+add b, im_hardware_flag
+jsr im_request
 set a, 1
 hwi [i]
-ife c, i
+ife x, i
 	set pc, exitloop3
 set pc, .loop3
 
