@@ -6,6 +6,9 @@
 ;0x0 handler or 0 if no handler
 ;0x1 process
 
+;Handlers get called with the hardware address of the calling hardware in A
+;and the message word in B, they can destroy A, B and EX but must preserve all other registers
+
 .define im_hardware_flag		0x1000	;Never set this to 0
 
 :im_interrupt_handler
@@ -21,12 +24,18 @@ shl b, 1
 add b, [im_table_address]
 ife [b], 0
 set pc, .no_handler
-jsr [b]
+set push, [b]
+set b, [b + 1]
+jsr pop
 :.no_handler	;fail silently
 set b, pop
 set ex, pop
 rfi 0
 
+;A is hardware address
+;B is handler location
+;C is message word
+;Return: A is 0 on success, errno on failure
 :im_request
 add [pm_semaphore], 1
 shl a, 1
@@ -34,7 +43,7 @@ add a, [im_table_address]
 ifn [a], 0
 set pc, .already_in_use
 set [a], b
-set [a + 1], [current_process]
+set [a + 1], c
 set a, 0		;success
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 :.already_in_use
