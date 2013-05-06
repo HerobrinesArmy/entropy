@@ -4,6 +4,12 @@
 ;i is used to work with the queue
 ;Queue references still need to be changed to "job list" or just "list"
 ;DATA
+:io_fake_entry
+.dat io_fake_object
+:io_fake_object
+.dat 0x0
+.dat 0x0
+
 :io_drive_data
 .dat 0x0
 :io_drive_count
@@ -16,10 +22,10 @@ set push, z
 set push, y
 set push, x
 set push, c
-set push, b
+set push, a
 set j, a
-mul j, 0x6 ; length of drive data entry
-add j, [io_drive_data] 
+mul j, 0x7 ; length of drive data entry
+add j, [io_drive_data]
 set y, j
 ;j is the current drive data entry
 set a, 0
@@ -28,7 +34,7 @@ hwi [j]
 ife c, 0xffff
 	set pc, .drivedead
 
-set [y+3], i; Moves the current entry pointer to the next position to be used by the next iteration of the operator position
+;set [y+3], i; Moves the current entry pointer to the next position to be used by the next iteration of the operator position
 ifn c, 0x0
 	set pc, .cref
 set pc, .chkb ; if error none, check state
@@ -42,13 +48,13 @@ set pc, [c + .cref]
 
 :.drivedead
 xor [j+2], 0x8
-set c, 0x400
+bor c, 0xff
 jsr .seterrall
 jsr .add_job_off
 set pc, .return
 
 :.busy
-set c, 0x1
+set c, 0x01
 set pc, .return
 
 :.no_media
@@ -58,25 +64,25 @@ jsr .add_job_off
 set pc, .return
 
 :.wp
-set c, 0x4
+set c, 0x03
 jsr .setprevious
 set pc, .chkb
 
 :.ejectd
-set c, 0x8
+set c, 0x04
 jsr .seterrall
 jsr .add_job_off
 set pc, .return
 
 :.bad_sector
-set c, 0x10
+set c, 0x05
 jsr .setprevious
 ; continues down
 
 :.chkb
 ifn b, 0x0 
 	set pc, .bref
-bor c, 0x20
+;bor c, 0x0;sets byte to null, but it should be that way already so this is omitted. 
 jsr .seterrall
 jsr .add_job_off
 set pc, .return
@@ -88,44 +94,60 @@ set pc, [b + .bref]
 .dat .op_qck_exit;busy
 
 :.ready
-bor c, 0x40
+bor c, 0x0100
 jsr .setprevious
 set pc, .schedlr_ready
 
 :.readywp
-bor c, 0x80
+bor c, 0x0200
 set a, [j+2]
-and a, 0x4
-ifn [a], 0x0
+and a, 0x2
+ifn [a], 0x2
 	set pc, .wperr
 set a, 0x2
 set pc, .schedlr_ready
 
 :.op_qck_exit
-bor c, 0x100
+bor c, 0x0300
+jsr .setprevious
 set pc, .return
 
 :.wperr
 jsr .seterrall
-set c, [j+2]
-bor c, 0x200
-set [j+2], c
 set pc, .return
 
 :.schedlr_ready ;Reads the job and sends data to drive
+set i, [j+3]
+ifn [i+4], 5
+set pc, .perform_job
+
+:.find_job
+set i, [j+1]
+set x, 0x50
+add x, i
+sub i, 1;  sets pointer to i-1 so that we can properly check the joblist and check the acknowldged word at the same time
+:.loop0
+ifg i, x 
+set pc, .nojobs
+add i, 5
+ifn [i], 0x0
+set .loop0
+sub i, 4
+
+:.perform_job
 set y, [i]	;Memory to use
 set x, [i+2]	;Sector
 hwi [j]		;Obvious Hardware interrupt number
 ; should probably handle b output from drive here...meh
-
-set y, [j+1] ;moves the queue to the next entry, returns to start of job list
+;moves to next entry
+set y, [j+1]
 add y, 0x50
-add [j+3], 5
-ife [j+3], y			; moves the queue to the next entry, returns to start of job list
+add [j+3], 5 ;moves the job/entry pointer to the next entry
+ife [j+3], y ; if the current position of the entry pointer is out of the job list's bounds, returns to start of job list
 	set [j+3], [j+1]
+set [j+6], i
+
 :.return
-set ex, c
-set  b, pop
 set  c, pop
 set  x, pop
 set  y, pop
@@ -133,6 +155,10 @@ set  z, pop
 set  i, pop
 set  j, pop
 set pc, pop
+
+:.no_jobs
+set [j+4], 0
+set pc, .return
 
 :.seterrall ;Sets all the entries in the job list to the specified code (c register).
 set i, [j+1]
@@ -150,75 +176,54 @@ add y, 1
 set pc, .loop1
 
 :.add_job_off ;Turns off the job list we are currently working on
-set y, [j+3]
-and y, 0x10
-ife y, 0x0
-bor [j+3], 0x10
+set y, [j+2]
+and y, 0x8
+ife y, 0x8
+xor [j+2], 0x8; sets flag
 set pc, pop
 
 :.setprevious
-set i, [j+3] 
-sub i, 1
-ifl i, [j+1]
-jsr .branchcon0
-set i, [i]
-set [i+1], c ; sets the previous io object to the code encountered. 
+set i, [j+6] 
+set i, [i+3]; makes I point to the entry's object
+set [i+2],c
 set pc, pop
-
-:.branchcon0
-set i, [j+1]
-add i, 0x50
-sub i, 0x1
-set pc, pop
-
 
 :io_object_create
 ;creates an object at location i, if no space, halt computer.
-
-set a, 0x3
+set a, 0x2
 jsr mm_request
 ife a, 0xffff
 set pc, fatal_error
 set [a], [current_process]
 set [a+1], 0x0
-set [a+2], 0x0
-set pc, pop
-
-:io_object_query
-;y is the location of the object
-;c is the intended state you are looking for the object to have
-;destroyes a
-;thread sleeps if the object is not in the requested state
-set c, [y+1]
-and c, a
-ife [c], a
-set pc, pop
-jsr pm_block_me
 set pc, pop
 
 :io_object_delete
-;y is the location of the entry in the queue to acknowldge and mark it as free
-;y is the location of the mutex object 
+;y is the location of the object to acknowldge and mark as free
 ;x is the drive
 ;destroyes i and j 
-;searches the queue for the IO object, Quits if it doesn't find it with 0xffff or exits with the same value in y having acknowldged the 
+;searches the job list for the IO object, Quits if it doesn't find it with 0xffff or exits with the same value in y having acknowldged the 
 ;entry and deleted the IO object.
-mul x, 6
-set j, [x+1]
-add j, 0x3 ; offset of the IO object location in the entry
+mul x, 7
+add x, [io_drive_data]
+set j, [x+1]; start of job list
 set i, j
-add i, 0x50 ; queue regular size (0x10*5)
+add i, 0x50 ;job list regular size (0x10*5)
 IAQ 0
-sub j, 5
+sub j, 2;object point location in entry
 :.loop0
 add j, 5
-ife j, i
-	set pc, .err0
+ifg j, i
+	set pc, .err0; doesn't find the requested object in job list
 ifn [j], y
-	set pc, .loop0
+	set pc, .loop0;checked job isn't the requested one, 
 ;continues down
-:.exit0
-set [j+1], 0x5555; see .loop0 in add_job
+:.exit0 ; object matches 
+set [j+4], 0x5; see .loop0 in add_job, marks the  object as acknowldged.
+set push, a
+set a, [y]
+jsr mm_free
+set a, pop
 IAQ 1
 set pc, pop
 :.err0

@@ -4,6 +4,86 @@
 ;DATA
 :fd_current_drive   .dat 0x0000
 
+
+:fd;EXTERNAL INTERFACE
+;ABCX Input
+;A is the requested operation
+;B,C and X are define by their apropriate subfunction. 
+set push, y
+set push, z
+set push, i
+set push, j
+set push, ex
+
+add a, 1; incriment so we can use 0 as an input
+:.aref
+set pc, [a+pc]
+.dat fd_get_drive_data
+.dat fd_update_fat
+.dat fd_load_fat
+
+
+
+
+
+:fd_end
+sub a, 1 ;restore a
+set pop, ex
+set pop, j
+set pop, i
+set pop, z
+set pop, y
+set pc, pop
+
+
+
+:fd_get_drive_data
+;x is the drive number.
+;b is the where we store the pointer.
+set y, x
+mul y, 6
+add y, [io_drive_data]
+set [b], y
+set pc, fd_end 
+
+:fd_update_fat
+;x is the drive number
+;returns y 0xffff if unable
+set push, b
+set push, a
+jsr fd_allocate ;setup z parameter. Notice I don't push any of the the registers I'm not using because they have already been pushed by the external interface.
+set y, x
+mul y, 6
+add y, [io_drive_data]
+set a, y
+set b, 0x3
+set c, 0x7; sector of first third of FAT on disk
+jsr fd_add_job
+ife a, 0xffff; check 
+set pc, .err0
+set [z+0x7], i
+add a, 0x200;move pointer so we can do next write.
+set c, 0x8
+jsr fd_add_job
+ife a, 0xffff
+set pc, .err0
+set [z+0x8], i
+add a, 0x200
+set c, 0x9
+jsr fd_add_job
+ife a, 0xffff
+set pc, .err0
+set [z+0x9], i
+;NOT Finished 
+
+:fd_allocate
+set a, 0x10
+jsr mm_request
+ife a, 0xffff
+set pc, fatal_error
+set z, a
+set pc, pop
+
 :fd_load_fat
 ;Written By LukeW4lker
 ;x is the drive to load the FAT from.
@@ -24,54 +104,7 @@ add a, 0x200
 set c, 0x9
 jsr fd_add_job
 set [z+0x9], i
-;Kill me, Please. XI
-;Later.
-:.loop0
-set b,  [z+0x7]
-ifn b, 0x0
-set pc, .chk0
-jsr pm_block_me
-set pc, .loop0
-:.chk0
-xor b, 0b0000000110000000
-ifg b, 0x0
-set pc, fatal_error
-:.loop1
-set b,  [z+0x8]
-ifn b, 0x0
-set pc, .chk1
-jsr pm_block_me
-set pc, .loop1
-:.chk1
-xor b, 0b0000000110000000
-ifg b, 0x0
-set pc, fatal_error
-:.loop2
-set b,  [z+0x9]
-ifn b, 0x0
-set pc, .chk2
-jsr pm_block_me
-set pc, .loop2
-:.chk2
-xor b, 0b0000000110000000
-ifg b, 0x0
-set pc, fatal_error
-;set_fat_location_data
-sub a, 0x400
-mul x, 0x6
-set b, io_drive_data
-add b, x
-set [b+5], a
-set pc, pop
-
-
-
-
-
-
-
-
-
+;NOT finished 
 
 :fd_add_job
 ;By LukeW4lker
@@ -147,7 +180,7 @@ sub y, 5
 add y, 5
 ifg y, i
 	set pc, .findspaceErr
-ifn [y+4], 0x5555 ;check if the entry is mortem
+ifn [y+4], 0x5 ;check if the entry is mortem
 	set pc, .loop0
 set pc, pop
 
@@ -168,10 +201,4 @@ set pc, pop
 
 :.startoperator
 int [x]
-;ex is what the drive returned when it was polled by the scheduler.
 set pc, pop
-
-
-
-
-

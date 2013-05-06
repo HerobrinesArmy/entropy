@@ -56,8 +56,8 @@ set j, [.varpointer]
 set i, 0x0
 set b, a
 set x, a
-mul a, 0x5 ; length of a drive data Entry 
-mul b, 0x50 ; Queue length for each drive
+mul a, 0x7 ; length of a drive data Entry 
+mul b, 0x50 ; job list length for each drive
 add a, b
 jsr mm_request
 ife a, 0xffff
@@ -72,9 +72,11 @@ ifg i, x
 set [y], j; hardware address
 add j, 1
 add i, 1
-set [y+1], z; queue location
+set [y+1], z; job list location
+set [y+3], z; current entry pointer
+set [y+6], io_fake_entry;used to handle any errors the IO will give on the first operation. 
 add z, 0x50
-add y, 5
+add y, 7
 set pc, .loop1
  
 :.exitloop1
@@ -107,7 +109,7 @@ set pc, fatal_error
 bor [y+2], 0x4
 
 :.refend
-add y, 5; go to the next entry location
+add y, 7; go to the next entry location
 add z, 1
 set pc, .loop2
  
