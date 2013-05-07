@@ -122,9 +122,8 @@ ifg b, c
 set pc, .no_space
 sub c, b
 ;C=new free space
-set push, c
-sub peek, [a + 1]
-sub [mm_used], peek
+sub [mm_used], c
+add [mm_used], [a + 1]
 set [a + 1], c
 set a, 0 ;success
 set c, pop
