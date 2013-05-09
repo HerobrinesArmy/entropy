@@ -128,10 +128,10 @@ add x, i
 sub i, 1;  sets pointer to i-1 so that we can properly check the joblist and check the acknowldged word at the same time
 :.loop0
 ifg i, x 
-set pc, .nojobs
+set pc, .no_jobs
 add i, 5
 ifn [i], 0x0
-set .loop0
+set pc, .loop0
 sub i, 4
 
 :.perform_job

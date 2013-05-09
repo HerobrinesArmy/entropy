@@ -17,7 +17,7 @@ set push, ex
 
 add a, 1; incriment so we can use 0 as an input
 :.aref
-set pc, [a+pc]
+set pc, [a + .aref]
 .dat fd_get_drive_data
 .dat fd_update_fat
 .dat fd_load_fat
@@ -28,11 +28,11 @@ set pc, [a+pc]
 
 :fd_end
 sub a, 1 ;restore a
-set pop, ex
-set pop, j
-set pop, i
-set pop, z
-set pop, y
+set ex, pop
+set j, pop
+set i, pop
+set z, pop
+set y, pop
 set pc, pop
 
 
@@ -75,6 +75,7 @@ ife a, 0xffff
 set pc, .err0
 set [z+0x9], i
 ;NOT Finished 
+:.err0
 
 :fd_allocate
 set a, 0x10
@@ -105,6 +106,18 @@ set c, 0x9
 jsr fd_add_job
 set [z+0x9], i
 ;NOT finished 
+
+
+
+
+
+
+
+
+
+
+
+
 
 :fd_add_job
 ;By LukeW4lker
