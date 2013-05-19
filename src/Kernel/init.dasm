@@ -13,6 +13,7 @@ set [fd_current_drive], [0xffff]
 
 :im_init
 hwn a
+shl a, 1
 jsr mm_request
 ife a, -1
 jsr fatal_error ;Does not return
