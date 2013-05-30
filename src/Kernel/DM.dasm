@@ -2,7 +2,7 @@
 
 ;Handles IO operations for all m35fd drives
 
-dm_handler
+:dm_handler
 ;A=hardware address, B=drive entry
 set push, c
 set push, x
@@ -89,7 +89,7 @@ iaq 1 ;Turn on interrupt queuing while adding entry so the handler doesn't mess 
 shl x, 2
 add x, [dm_drive_data]
 set push, 0 ;next operation
-set push, [pm_current_process]
+set push, [current_process]
 set push, c
 set push, b
 set push, a
