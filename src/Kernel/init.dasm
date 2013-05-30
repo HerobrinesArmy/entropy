@@ -13,6 +13,7 @@ set [fd_current_drive], [0xffff]
 
 :im_init
 hwn a
+shl a, 1
 jsr mm_request
 ife a, -1
 jsr fatal_error ;Does not return
@@ -69,19 +70,19 @@ ife y, hwq_m35fd_y
 add z, 1
 ifn i, 0
 std pc, .loop_a
-set [dm_drive_num], a
+set [dm_drive_num], z
 shl z, 2
 set a, z
 jsr mm_request
 ife a, -1
 jsr fatal_error ;does not return
+set [dm_drive_data], a
 set push, a
 set i, a
 set a, z
 set b, 0
 jsr ut_fill_mem
-set z, pop
-set [dm_drive_data], z
+set z, pop ;location of drive data
 hwn i
 sub i, 1
 :.loop_b
@@ -96,17 +97,21 @@ ifn i, 0
 std pc, .loop_a
 set pc, .continue
 :.add_m35fd
+;request handler
 set a, i
 set b, dm_handler
+set c, z
 jsr im_request
 ifn a, 0 ;Couldn't get interrupt handler
 set pc, pop ;Skip this drive
+;set interrupt message
 set a, 1
 set x, i
 add x, 0x1000
 hwi i
+;add entry to drive data
 set [z], i
-add z, 1
+add z, 4
 set pc, pop
 :.continue
 

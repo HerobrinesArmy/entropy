@@ -4,6 +4,7 @@
 
 ;IM table entry:
 ;0x0 handler or 0 if no handler
+;0x1 extra message word
 
 .define im_hardware_flag		0x1000	;Never set this to 0
 

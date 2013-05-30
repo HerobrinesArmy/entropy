@@ -1,123 +1,137 @@
-; *************************
-; Project: Entropy
-; File: DM.dasm
-; *************************
+;DRIVE MANAGER by Lucus
 
-:dm_handler
-set i, [dm_drive_data]
-sub i, 4
-add i, 4
-ifn [i], a
-sub pc, 3
-;I is address of drive entry
+;Handles IO operations for all m35fd drives
+
+dm_handler
+;A=hardware address, B=drive entry
+set push, c
+set push, x
+set push, y
+set push, z
+set push, i
+
+;POLL DRIVE
+set z, b
 set a, 0
-hwi [i]
-ifn c, 2
-ifn c, 4
+hwi [z]
+
+;IF STATE_BUSY: RETURN
+ife b, 3
+set pc, .ret
+
+;IF ERROR: FAIL current ELSE SUCCESS current
+set i, [z+1]
+ife i, 0
+set pc, .ret    ;A state change occured while there was no operation running
+set [i], c      ;set return state to error code
+ifn c, 0        ;if there was an error
+bor [i], 0x10   ;add 0x10 error flag
+set a, [i+3]
+jsr pm_unblock
+set i, [i+4]    ;proceed to next operation
+
+;IF QUEUE is empty: RETURN
+ife i, 0
+set pc, .ret
+
+;IF ERROR_FATAL OR STATE_NO_MEDIA: FAIL QUEUE
 ifn c, -1
 ifn b, 0
-add pc, 2
-set pc, .clear_queue
-;Set success or failure
-set a, [dm_current]
-set [a+1], 1 ;success
-ife c, 5
-set [a+1], -1 ;failure
-set [dm_current], [a]
-;If drive still busy, return
-ife b, 3
+set pc, .mainloop
+:.failloop
+set [i], 0x20
+set a, [i+3]
+jsr pm_unblock
+set i, [i+4]
+ifn i, 0
+set pc, .failloop
+set pc, .ret
+
+:.mainloop
+;Start next operation
+set x, [i+1]
+set y, [i+2]
+set a, [i]
+hwi [z]
+;IF B == 1: RETURN
+ife b, 1
+set pc, .ret
+;Fail current
+set a, 0 ;POLL
+hwi [z]
+set [i], c
+bor [i], 0x10
+set a, [i+3]
+jsr pm_unblock
+;IF queue empty: RETURN
+set i, [i+4]
+ifn i, 0
+set pc, .mainloop
+:.ret
+set [z+1], i
+ife i, 0
+set [z+2], 0
+set i, pop
+set z, pop
+set y, pop
+set x, pop
+set c, pop
 set pc, pop
-;Do next op
-
-:.clear_queue
-;Clear the queue by telling each item it failed and then deleting it in order, then return
-set a, [i + dm_drive_current]
-ife a, 0
-set pc, .clear_end
-:.loop_b
-set [a+1], -1
-set a, [a]
-ifn a, 0
-set pc, .loop_b
-:.clear_end
-set [i + dm_drive_current], 0
-set [i + dm_drive_next_ptr], 0
-set pc, pop
 
 
-
-
-.define dm_drive_data_size	4
-
-.define dm_drive_address	0
-.define dm_drive_next_ptr	1
-.define dm_drive_current	2
-.define dm_drive_reserved	3
-;HWA 0-z
-;next_ptr 0-z
-;current 0-z
-
-:dm_drive_data	.dat 0x0000
-:dm_drive_num	.dat 0x0000
-
-:dm_next_ptr .dat 0x0000
-:dm_current  .dat 0x0000
-;[dm_current] is where the data for the current running op is
-;and also the AXYZ for the next op.
-;[[dm_current]] is where the data for the next op is and the AXYZ for the op after that
-;[[dm_current]+1] is A for next op
-;[[dm_current]+2] is X for next op
-;[[dm_current]+3] is Y for next op
-;[[dm_current]+4] is Z for next op
-
-;A = 2=read/3=write
-;X = sector to work on
-;Y = memory to work on
-;Z = drive to work on
-;Returns after op is done with:
-;A = 1=success/-1=failure
+;A=operation type
+;B=sector to work on
+;C=memory to work on
+;X=drive to work on
+;RETURN: A=success or errorcode
 :dm_add
-add [pm_semaphore], 1
-ifn [dm_next_ptr], 0
-set pc, .queue
-sub sp, 4
-set push, 0
-set [dm_next_ptr], sp ;pop
-set [dm_current], sp
-jsr pm_unlock
-ifn [dm_current], sp ;current is not us.
+iaq 1 ;Turn on interrupt queuing while adding entry so the handler doesn't mess up if an interrupt comes in in the middle.
+shl x, 2
+add x, [dm_drive_data]
+set push, 0 ;next operation
+set push, [pm_current_process]
+set push, c
+set push, b
+set push, a
+ife [x+1], 0 ;queue is empty
+set pc, .emptyqueue
+;queue is not empty
+set a, [x+2]
+set [a+4], sp
+set [x+2], sp
+set pc, .wait
+:.emptyqueue
+set [x+1], sp
+set [x+2], sp
+set b, x
+jsr dm_handler
+:.wait
+iaq 0
+:.loop_a
+ifn a, 2
+ifn a, 3
 set pc, .finish
 jsr pm_block_me
-sub pc, 7
-:.queue
-set b, [dm_next_ptr]
-set [b+1], a
-set [b+2], x
-set [b+3], y
-set [b+4], z ;drive to use
-
+set pc, .loop_a
 :.finish
-set a, -1
-ife [sp+1], 1
-set a, 1
-add sp, 5
+set a, pop
+set b, pop
+set c, pop
+add sp, 2 ;2 more pops
 set pc, pop
 
-;HWA 0-Z
+:dm_drive_num .dat 0x0000
+:dm_drive_data .dat 0x0000
 
-;Pass around sector numbers which act as file and dir handlers.
-;Processes block when waiting for IO
-;ALWAYS poll drive after starting an op?
+;DRIVE ENTRY:
+;0x0 hardware address
+;0x1 current operation
+;0x2 last operation
+;0x3 reserved
 
-;Remember:
-;For every drive:
-;hardware address
-;operations queue
-
-;OPERATIONS QUEUE:
-;Entry:
-;0x0 next process 
-
-;dm_add
-
-
+;OPERATION ENTRY:
+;0x0 0=success/2=read/3=write/0x10&ERROR=failure/0x20=global failure
+;0x1 sector to work on (X)
+;0x2 memory to work on (Y)
+;0x3 thread to unblock when done
+;0x4 next operation
