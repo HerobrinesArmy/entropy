@@ -36,8 +36,8 @@ sub i, 1
 ife i, -1
 set pc, .no_clock
 hwq i
-ife a, 0xb402
-ife b, 0x12d0
+ife a, hwq_clock_a
+ife b, hwq_clock_b
 set pc, .found_clock
 std pc, .loop_a
 :.no_clock
@@ -128,9 +128,9 @@ sub pc, 3 ;if this proc didn't get killed, try again.
 set a, sp
 set b, [sp]
 set c, [sp + 1]
-set x, 0xffff
-set y, x
-set z, y
+set x, [sp + 2]
+set y, [sp + 3]
+set z, [sp + 4]
 set i, 0
 set j, 0
 add j, 1

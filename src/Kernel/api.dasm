@@ -38,7 +38,7 @@
 .dat pm_kill_me         ;0x1c
 .dat pm_kill            ;0x1d
 .dat pm_block_me        ;0x1e
-.dat pm_unblock_me      ;0x1f
+.dat pm_unblock         ;0x1f
 .dat pm_thread          ;0x20
 .dat pm_hurry           ;0x21
 .dat pm_urgent          ;0x22

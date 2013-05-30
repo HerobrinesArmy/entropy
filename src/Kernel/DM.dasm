@@ -27,7 +27,7 @@ set [i], c      ;set return state to error code
 ifn c, 0        ;if there was an error
 bor [i], 0x10   ;add 0x10 error flag
 set a, [i+3]
-jsr pm_unblock
+jsr pm_hurry
 set i, [i+4]    ;proceed to next operation
 
 ;IF QUEUE is empty: RETURN
@@ -41,7 +41,7 @@ set pc, .mainloop
 :.failloop
 set [i], 0x20
 set a, [i+3]
-jsr pm_unblock
+jsr pm_hurry
 set i, [i+4]
 ifn i, 0
 set pc, .failloop
@@ -62,7 +62,7 @@ hwi [z]
 set [i], c
 bor [i], 0x10
 set a, [i+3]
-jsr pm_unblock
+jsr pm_hurry
 ;IF queue empty: RETURN
 set i, [i+4]
 ifn i, 0

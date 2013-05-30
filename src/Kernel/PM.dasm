@@ -253,14 +253,6 @@ set a, [a + pm_stack_loc]
 jsr mm_free
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
-:pm_unblock_me
-set push, a
-set a, [current_process]
-shl a, 2
-and [a + pm_flags], -1 - pm_blocked
-set a, pop
-set pc, pop
-
 ;A=process to unblock
 :pm_unblock
 shl a, 2
