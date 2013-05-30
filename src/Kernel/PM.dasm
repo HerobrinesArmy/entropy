@@ -385,6 +385,7 @@ set j, pop
 set i, pop
 shl a, 2
 and [a + pm_flags], -1 - pm_blocked
+set [pm_til_next], 0
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
 ;Get the switching speed in ticks per switch in A
