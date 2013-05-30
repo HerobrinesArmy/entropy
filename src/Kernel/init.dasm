@@ -22,14 +22,14 @@ ias im_interrupt_handler
 
 :io_init
 hwn z
-set j, 0x0
 set a, z
 jsr mm_request
 ife a, 0xffff
 jsr fatal_error
 set [.varpointer], a
 set i, a
- 
+set j, 0x0
+
 :.drive_loop0
 hwq j
 ife a, 0x24c5  
@@ -37,7 +37,7 @@ ife a, 0x24c5
                 jsr .add_drive
 ife j, z
         set pc, .exit0
-ife [io_drive_count], 0xf ; exit if the number of drives found is 16
+ife [io_drive_count], 0xf	;exit if the number of drives found is 16
         set pc, .exit0
 add j, 1
 set pc, .drive_loop0
@@ -47,100 +47,64 @@ set [i], j
 add i, 1
 add [io_drive_count], 1
 set pc, pop
- 
+
 :.exit0
 set a, [io_drive_count]
 set j, [.varpointer]
 set i, 0x0
-set b, a
 set x, a
-mul a, 0x7 ; length of a drive data Entry 
-mul b, 0x50 ; job list length for each drive
-add a, b
+mul a, 0x9	;9 = Length of a drive data table entry + Job request for each drive
 jsr mm_request
 ife a, 0xffff
 jsr fatal_error
 set y, a
-set [io_drive_data], y
-add b, a
-set z, b
+set [io_drive_data], a
+set z, x
+mul z, 5
+add z, a
 :.loop1
 ifg i, x
         set pc, .exitloop1
-set [y], j; hardware address
-add j, 1
-add i, 1
-set [y+1], z; job list location
-set [y+3], z; current entry pointer
-set [y+6], io_fake_entry;used to handle any errors the IO will give on the first operation. 
-add z, 0x50
-add y, 7
-set pc, .loop1
- 
-:.exitloop1
-set i, io_drive_count
-set z, 0x0
-:.loop2
-ifg z, i
-         set pc, .exitloop2
-set a, 0
-set [y+2], 0x0 ;used to make sure that we have a blank slate when doing bors
+set [y], j	;Hardware address
+set [y+1], 0x0	;Slightly redundant.  
+set [y+2], z
 hwi [y]
-ife b, 0xffff
-        set pc, fatal_error
-:.ref
+ife c 0xffff
+        set pc, .broken
+set a, io_operator
+set b, [y]
+bor b, [im_hardware_flag]
+jsr im_request
 set pc, [b+.ref]
+:.ref
 .dat .nomedia
 .dat .ready
 .dat .wp
-.dat .halt
- 
+.dat .busy
 :.nomedia
-and [y+2], 0xfffd
+and [y+1], 0xfffd
 set pc, .refend
 :.ready
-bor [y+2], 0x2
+bor [y+1], 0x7
 set pc, .refend
-:.halt
-set pc, fatal_error
+:.busy
+set pc, .loop1
+:.broken
+and [y+1], 0xfffe
+set pc, .refend
 :.wp
-bor [y+2], 0x4
-
+bor [y+1], 0x3
+and [y+1], 0xfffb
 :.refend
-add y, 7; go to the next entry location
-add z, 1
-set pc, .loop2
- 
-:.exitloop2
-set i, .varpointer
-sub i, 0x1
-set x, i
-add x, io_drive_count
-set c, 0xffff
-:.loop3
-;i is the location of the HWI numbers
-add c, 1
-add i, 1
-set a, io_operator
-set b, [i]
-add b, im_hardware_flag
-jsr im_request
-set a, 1
-hwi [i]
-ife x, i
-	set pc, exitloop3
-set pc, .loop3
+add y, 5	;go to the next entry location.
+add z, 5	;move z to the next job request array location.
+sti pc, .loop1
 
-:.varpointer
-.dat 0x0
-
-:exitloop3
-sub i, io_drive_count
-set a, i
+:exitloop1
+set a, .varpointer
 jsr mm_free
 ife a, 0xffff
 jsr fatal_error
-
 
 :pm_init
 ;nothing to do here
