@@ -4,11 +4,6 @@
 ;i is used to work with the queue
 ;Queue references still need to be changed to "job list" or just "list"
 ;DATA
-:io_fake_entry
-.dat io_fake_object
-:io_fake_object
-.dat 0x0
-.dat 0x0
 
 :io_drive_data
 .dat 0x0
@@ -23,8 +18,8 @@ set push, y
 set push, x
 set push, c
 set push, a
-set j, a
-mul j, 0x7 ; length of drive data entry
+set j, b
+mul j, 0x5 ; length of drive data entry
 add j, [io_drive_data]
 set y, j
 ;j is the current drive data entry
@@ -33,120 +28,64 @@ set b, 0
 hwi [j]
 ife c, 0xffff
 	set pc, .drivedead
-
-;set [y+3], i; Moves the current entry pointer to the next position to be used by the next iteration of the operator position
-ifn c, 0x0
-	set pc, .cref
-set pc, .chkb ; if error none, check state
-:.cref
 set pc, [c + .cref]
-.dat .busy
-.dat .no_media
-.dat .wp
-.dat .ejectd
-.dat .bad_sector
+:.cref
+.dat .chkb	;no error, mark previous job as good. 
+.dat .busy	;return quickly 
+.dat .no_media	;return fail for all
+.dat .wp	;return fail for all 
+.dat .ejectd	;return fail for all
+.dat .bad_sector;  return failure for current item
 
 :.drivedead
-xor [j+2], 0x8
-bor c, 0xff
-jsr .seterrall
-jsr .add_job_off
-set pc, .return
+and [j+1], 0xfffe
+set pc, .exitjob
 
 :.busy
-set c, 0x01
-set pc, .return
-
-:.no_media
-set c, 0x2
-jsr .seterrall
-jsr .add_job_off
-set pc, .return
+bor [j+1], 0x0100
+set pc, .exitjob
 
 :.wp
-set c, 0x03
-jsr .setprevious
-set pc, .chkb
+bor [j+1], 0x0300
+set pc, .exitjob
 
 :.ejectd
-set c, 0x04
-jsr .seterrall
-jsr .add_job_off
-set pc, .return
+bor [j+1], 0x0400
+set pc, .exitjob
+
+:.no_media
+and [j+1], 0xfffd
+set pc, .exitjob
 
 :.bad_sector
-set c, 0x05
-jsr .setprevious
-; continues down
+bor [i+1], 0x0500 
+set pc, .exitjob
 
 :.chkb
 ifn b, 0x0 
-	set pc, .bref
-;bor c, 0x0;sets byte to null, but it should be that way already so this is omitted. 
-jsr .seterrall
-jsr .add_job_off
+	set pc, .bref0
+and [j+1], 0xfffd
+bor [j+1], 0x0400
+set pc, .exitjob
+:.bref0
+and [j+1], 0xff	;Mark the drive as not having a previous error
+ife b, 0x3	;Drive is busy
 set pc, .return
-
-:.bref
-set pc, [b + .bref]
-.dat .ready
-.dat .readywp
-.dat .op_qck_exit;busy
-
-:.ready
-bor c, 0x0100
-jsr .setprevious
-set pc, .schedlr_ready
-
-:.readywp
-bor c, 0x0200
-set a, [j+2]
-and a, 0x2
-ifn [a], 0x2
-	set pc, .wperr
-set a, 0x2
-set pc, .schedlr_ready
-
-:.op_qck_exit
-bor c, 0x0300
-jsr .setprevious
-set pc, .return
-
-:.wperr
-jsr .seterrall
-set pc, .return
-
-:.schedlr_ready ;Reads the job and sends data to drive
-set i, [j+3]
-ifn [i+4], 5
-set pc, .perform_job
-
-:.find_job
-set i, [j+1]
-set x, 0x50
-add x, i
-sub i, 1;  sets pointer to i-1 so that we can properly check the joblist and check the acknowldged word at the same time
-:.loop0
-ifg i, x 
-set pc, .no_jobs
-add i, 5
-ifn [i], 0x0
-set pc, .loop0
-sub i, 4
-
+set i, [j+2]
+ife [i+1], 0	;check if done.
+set pc, .exitjob
+and i, 1
+ife i, 1
+set pc, .write
+set pc, .read
 :.perform_job
-set y, [i]	;Memory to use
+add [i+2], 0x200;Incriment memory pointer
+sub [i+1], 1
+set y, [i+2]	;Memory to use
+set i, [i]
+add i, 1
 set x, [i+2]	;Sector
 hwi [j]		;Obvious Hardware interrupt number
-; should probably handle b output from drive here...meh
-;moves to next entry
-set y, [j+1]
-add y, 0x50
-add [j+3], 5 ;moves the job/entry pointer to the next entry
-ife [j+3], y ; if the current position of the entry pointer is out of the job list's bounds, returns to start of job list
-	set [j+3], [j+1]
-set [j+6], i
-
 :.return
 set  c, pop
 set  x, pop
@@ -155,78 +94,96 @@ set  z, pop
 set  i, pop
 set  j, pop
 set pc, pop
-
-:.no_jobs
-set [j+4], 0
+:.write
+add b, 1
+:.read
+add b, 1
+set pc, .perform_job
+:.exitjob
+set a, [j+4]
+jsr pm_unblock 
 set pc, .return
 
-:.seterrall ;Sets all the entries in the job list to the specified code (c register).
-set i, [j+1]
-add i, 4
-set y, i
-set x, 0x50
-add x, i
-:.loop1
-ife y, x
-	set pc, pop
-set z, [i]
-set [z], c; set object of entry I.
-add i, 5
-add y, 1
-set pc, .loop1
-
-:.add_job_off ;Turns off the job list we are currently working on
-set y, [j+2]
-and y, 0x8
-ife y, 0x8
-xor [j+2], 0x8; sets flag
-set pc, pop
-
-:.setprevious
-set i, [j+6] 
-set i, [i+3]; makes I point to the entry's object
-set [i+2],c
-set pc, pop
-
-:io_object_create
-;creates an object at location i, if no space, halt computer.
-set a, 0x2
-jsr mm_request
-ife a, 0xffff
-set pc, fatal_error
-set [a], [current_process]
-set [a+1], 0x0
-set pc, pop
-
-:io_object_delete
-;y is the location of the object to acknowldge and mark as free
-;x is the drive
-;destroyes i and j 
-;searches the job list for the IO object, Quits if it doesn't find it with 0xffff or exits with the same value in y having acknowldged the 
-;entry and deleted the IO object.
-mul x, 7
-add x, [io_drive_data]
-set j, [x+1]; start of job list
-set i, j
-add i, 0x50 ;job list regular size (0x10*5)
-IAQ 0
-sub j, 2;object point location in entry
-:.loop0
-add j, 5
-ifg j, i
-	set pc, .err0; doesn't find the requested object in job list
-ifn [j], y
-	set pc, .loop0;checked job isn't the requested one, 
-;continues down
-:.exit0 ; object matches 
-set [j+4], 0x5; see .loop0 in add_job, marks the  object as acknowldged.
-set push, a
-set a, [y]
-jsr mm_free
-set a, pop
-IAQ 1
+:io_get_drive_entry
+;input x drive number
+;output is c as the location of the entry
+;c is 0xffff if out of bounds
+ifg x, [io_drive_count]
+set pc, .err0
+set c, x
+mul c, 4;  length of drive data entry
+add c, io_drive_data
 set pc, pop
 :.err0
+set c, 0xffff
+set pop
+
+:io_aquire
+;Used to aquire control of the IO so the calling thread can use the drive.
+;c is the drive data entry
+;sets ex to 0x1 if the drive is already held or 0x2 if the drive is out of bounds.
+;if ex is 0, the current process has control of the IO.
+;destroys b
+set b, [c+2]
 IAQ 1
-set a, 0xffff
+and b, 0xB
+ifn b, 0x3; check if drive is held, alive and has a disk.
+set pc, .err1
+bor [c+2], 0x8 ;acquire ownership
+set [c+4], [current_process]
+IAQ 0
+set ex, 0x0
+set pc, pop
+:.err0
+set ex, 0x1
+set pc, pop
+:.err1
+set ex, 0x2
+set pc, pop
+
+:io_work
+;a is a pointer to the task list
+;b is the memory to use(MUST BE CONTIGUOUS, I do not check if you have enough room, that is your job). 
+;c is the drive data entry pointer
+;y is the flag
+;NOTES:Will operate based on how the y flag is set.
+;Y will be 0xfffe if writing is permitted and 0xffff if ther is a drive error, check the drive data entry for more info.
+set i, [c+1]
+and i, 4
+set j, y
+and j, 1
+ife i, 0	;Check if write operation is permitted if it's requested. 
+ifn j, 0
+set pc, .err0	;Write operation isn't permitted.
+set j, [c+2] 
+set [j], y
+set [j+1], [a]	;set the number of sectors left to go
+set [j+2], b	;sets the memory location  
+int [c]		;mimic drive changing state.
+set j, y
+and j, 2
+:.loop0
+jsr pm_hurry
+set i, [c+1]
+shr i, 0x8
+ifg i, 0x0
+set pc, .errchck0
+set pc, .loop0
+:.errchck0
+ife i, 0xff
+set pc, .exiterr
+ife j, 2
+ife i, 0x3
+set pc, .continue
+ife i, 0x5
+set pc, .done
+set pc, .exiterr
+:.continue
+int [c]
+set pc, .loop0
+:.exiterr
+set y, 0xffff
+set pc, pop
+:.err0
+set y, 0xfffe
 set pc, pop

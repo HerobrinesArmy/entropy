@@ -106,8 +106,22 @@ set c, 0x9
 jsr fd_add_job
 set [z+0x9], i
 ;NOT finished 
+:.check_object
+set c, [z+0x7]
+ifg [c]. 0x0
+set pc, fd_check_return
 
 
+:.chk1
+ifg [z+0x8], 0x0
+set pc, fd_check_return
+
+:.chk2
+ifg [z+0x9], 0x0
+set pc, fd_check_return
+
+
+:fd_check_return
 
 
 
@@ -154,7 +168,6 @@ set pc, .infloop
 bor [x+2], 0x20; lock the queue 
 IAQ 0x0
 set y, [x+1]
-
 ;y is the start the queue we will add an entry to.
 jsr .find_freespace
 ;y is now the location of the free entry.
