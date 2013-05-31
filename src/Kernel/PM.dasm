@@ -88,6 +88,12 @@ iaq 1
 sub [pm_semaphore], 1
 set pc, pop
 
+;Set til_next to 0 and call schedule
+:pm_sleep
+set [pm_til_next], 0
+add pc, 2
+;walk into pm_unlock
+
 ;End a semaphore session, reducing the semaphore by 1 and checking the time if it's 0
 :pm_unlock
 sub [pm_semaphore], 1
@@ -105,7 +111,7 @@ rfi 0 ;Short for: IAQ 0; SET A, POP; SET PC, POP
 ;Arguments: X = first sector of file
 ;The first word of the file is expected to be it's total file length
 ;The file is expected to be in a continuous series of sectors
-;The file is expected to end with a regular executable binary
+;The file is expected to end with a regular executable binary footer
 :pm_add
 add [pm_semaphore], 1
 jsr ut_pushr
@@ -247,13 +253,10 @@ set a, [a + pm_stack_loc]
 jsr mm_free
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
-:pm_unblock_me
-set push, a
-set a, [current_process]
+;A=process to unblock
+:pm_unblock
 shl a, 2
-add a, pm_flags
 and [a + pm_flags], -1 - pm_blocked
-set a, pop
 set pc, pop
 
 :pm_block_me
@@ -382,6 +385,7 @@ set j, pop
 set i, pop
 shl a, 2
 and [a + pm_flags], -1 - pm_blocked
+set [pm_til_next], 0
 set pc, pm_unlock ;Short for: JSR label; SET PC, POP
 
 ;Get the switching speed in ticks per switch in A
