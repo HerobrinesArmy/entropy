@@ -94,7 +94,7 @@ ife x, hwq_m35fd_x
 ife y, hwq_m35fd_y
 jsr .add_m35fd
 ifn i, 0
-std pc, .loop_a
+std pc, .loop_b
 set pc, .continue
 :.add_m35fd
 ;request handler
