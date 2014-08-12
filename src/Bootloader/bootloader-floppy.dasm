@@ -45,8 +45,8 @@
 	ife	b,	3
 	sub	pc,	.base3 - .wait_for_floppy
 :.base3
-	IFE	A,	0x0000							; Command executed without errors?
-		IFE	[0x8000],	{ADD	PC,	0x0F}				; correct boot disk inserted?
+	IFE	A,	0x0000	    					; Command executed without errors
+		IFE	[0x8000],	0x3F82				; correct boot disk inserted?
 			SET	PC,	0x8000 + .copy_os		; one absolute jump - it will be correct, if the correct disk is inserted
 	SUB	PC,	.copy_os - .base1
 ; now copy the OS into the right place inside the memory.
